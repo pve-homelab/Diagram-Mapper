@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| **Version** | 0.1 — pre-spike baseline |
+| **Version** | 0.2 — pre-spike baseline, with the licence review's rulings folded in |
 | **Status** | Draft for M0 sign-off. Will be revised once the three M0 spikes land (see §16). |
 | **Owner** | CTO & Principal Architect |
-| **Date** | 2026-10-11 |
+| **Date** | 2026-10-12 |
 | **Supersedes** | Nothing. First technical specification for this repository. |
 | **Source requirements** | `PROMPT.md`, `First_Team_outcome.md`, `commercial launch ready product.md`, `pricinples and contraints.md` |
 | **Decisions behind this document** | `docs/adr/0001` … `docs/adr/0011` |
@@ -146,11 +146,11 @@ Confirmed with reasoning in `[ADR-0002]`. Declined options and their costs are r
 | Web framework | Next.js App Router | 15.x | MIT | £0 |
 | UI | React 19, Tailwind CSS, shadcn/ui (copied in, not a dependency) | — | MIT | £0 |
 | Canvas | `@xyflow/react` (React Flow 12) | 12.x | MIT | £0 — React Flow **Pro is not required** |
-| Graph layout | `@dagrejs/dagre` (candidate) | 1.x | MIT | £0 — final choice is the Frontend spike's, constrained to MIT/BSD/Apache/ISC |
+| Graph layout | `@dagrejs/dagre` (candidate) | 1.x | MIT | £0 — final choice is the Frontend spike's; `elkjs` (EPL-2.0) is permitted unmodified with shipped notices, per the licence review |
 | Database | PostgreSQL | 16 | PostgreSQL licence | see `[ADR-0009]` |
 | Data access | Drizzle ORM + `pg` | — | Apache-2.0 / MIT | £0 — `[ADR-0010]` |
 | Queue | pg-boss on the same PostgreSQL | 10.x | MIT | £0 — `[ADR-0008]` |
-| HCL parsing | `@cdktf/hcl2json` (WASM) + an in-house position index | — | MPL-2.0 ⚠ | £0 — `[ADR-0005]` |
+| HCL parsing | `@cdktf/hcl2json` (WASM) + an in-house position index | — | MPL-2.0 — cleared, unmodified only | £0 — `[ADR-0005]` |
 | Auth | Auth.js (`next-auth` v5), GitHub OAuth from the same GitHub App | 5.x | ISC | £0 |
 | Payments | Stripe (Checkout + Billing Portal + webhooks) | — | MIT (SDK) | per-transaction only |
 | AI | Anthropic Claude API via `@anthropic-ai/sdk` | — | MIT (SDK) | metered, capped — §9.6 |
@@ -160,20 +160,30 @@ Confirmed with reasoning in `[ADR-0002]`. Declined options and their costs are r
 | GitHub client | `octokit` | — | MIT | £0 |
 
 **Licence position.** Every dependency above is permissive (MIT / ISC / Apache-2.0 /
-BSD / PostgreSQL) with two exceptions that must be cleared before M1 code lands:
+BSD / PostgreSQL) except where noted. The authoritative policy is QA & Security's
+`docs/LICENCE-AND-DEPENDENCY-PLAN.md` (AIS-7), which has now ruled on the two items this
+specification had left open:
 
-1. **`@cdktf/hcl2json` is MPL-2.0** and embeds `hashicorp/hcl` (MPL-2.0). MPL-2.0 is
-   file-level copyleft: distributing it unmodified as a dependency of a closed-source
-   hosted service is the intended use, and we do not distribute binaries to customers at
-   all. My reading is that this is compatible with a proprietary SaaS. It is a reading,
-   not a ruling — **QA & Security owns the authoritative licence review** (AIS-7) and has
-   a block on this. The fallback if MPL-2.0 is rejected is in `[ADR-0005]` §Alternatives.
+1. **`@cdktf/hcl2json` is MPL-2.0** and embeds `hashicorp/hcl` (MPL-2.0). **Cleared** by
+   the licence review: MPL-2.0 is file-level copyleft and combining it with proprietary
+   code into a "Larger Work" is explicitly permitted by its §3.3. The clearance carries a
+   **binding condition — never fork, vendor-patch or inline an MPL dependency; use it
+   unmodified.** If a patch becomes unavoidable, we upstream it or publish the patched
+   file. This is a review rule, and it constrains the position-index design: our index is
+   built **beside** `hcl2json`'s output, never by editing its source. The fallback if the
+   clearance is ever withdrawn remains in `[ADR-0005]` §Alternatives.
 2. **Terraform ≥ 1.6 is BUSL-1.1 and is excluded entirely.** We do not ship, embed, call
-   or vendor the `terraform` binary. See `[ADR-0005]`. `elkjs` (EPL-2.0) is likewise
-   excluded from the layout choice unless QA & Security clears it.
+   or vendor the `terraform` binary. See `[ADR-0005]`. BUSL is prohibited for a
+   *dependency* and is unobjectionable for *our own* code — the asymmetry is deliberate.
+3. **`elkjs` (EPL-2.0) is permitted** for the layout choice, unmodified and with its
+   notice shipped, since it is client-bundled and therefore distributed. `@dagrejs/dagre`
+   (MIT) remains preferred; EPL is a trade to take knowingly, not by accident
+   (open question 4, §16).
 
 All other licence identifiers in this table are my assertion from package metadata and
-**must be verified in the automated licence gate** (§13.6), not trusted from this document.
+**must be verified in the automated licence gate** (§11), not trusted from this document.
+The gate also generates `THIRD-PARTY-LICENCES.md` and an SBOM, which is what actually
+discharges the attribution obligations above.
 
 ---
 
@@ -1251,7 +1261,7 @@ CI pipeline (`.github/workflows/ci.yml`), on every pull request, all jobs requir
 | `db` | migrations up/down on a throwaway PostgreSQL 16 service; RLS coverage and cross-tenant probe tests (§13.3) |
 | `contracts` | API responses validate against the published zod schemas |
 | `e2e` | Playwright against a seeded instance, mocked GitHub and a recorded AI transcript — **no API keys in CI** |
-| `licences` | allow-list check; fails on any licence outside MIT/ISC/BSD/Apache-2.0/PostgreSQL/CC0 or on any new MPL/EPL/BUSL/GPL dependency |
+| `licences` | allow-list check per `docs/LICENCE-AND-DEPENDENCY-PLAN.md`; fails on any licence outside the permissive set, on any AGPL/GPL/SSPL/BUSL/non-commercial dependency, and on any MPL/EPL dependency not recorded in `licence-exceptions.json`. Also fails on `UNKNOWN`/missing identifiers — unknown is not permissive. Emits `THIRD-PARTY-LICENCES.md` + SBOM |
 | `secrets` | secret scan on the diff and on history |
 | `audit` | `pnpm audit --audit-level=high` fails the build |
 
@@ -1464,7 +1474,7 @@ first.
 | Risk | Impact | Mitigation | Owner |
 |---|---|---|---|
 | Position indexing on real-world HCL is harder than estimated; line references are wide or wrong | Core value proposition degrades | Fall back to block-level ranges (always a containing range, never a wrong one) + `POSITION_INDEX_FALLBACK` diagnostic; spike AIS-4 measures it | Backend |
-| MPL-2.0 on `@cdktf/hcl2json` judged unacceptable | Parser rewrite, weeks | Licence review before M1 code lands; fallbacks in `[ADR-0005]` | QA & Security |
+| ~~MPL-2.0 on `@cdktf/hcl2json` judged unacceptable~~ — **closed**: cleared unmodified by the licence review | Would have been a parser rewrite, weeks | Residual risk is the condition, not the licence: a vendor-patch of `hcl2json` would breach it. Enforced by review and by the `licences` gate's exception file | CTO (review rule) |
 | Remote modules unsupported → large real repositories look mostly empty | Product looks broken on exactly the repositories that most need it | `unknown_reference` nodes make the gap explicit; measure the unresolved ratio on the public corpus; remote module fetching is the first post-launch candidate | Product + Backend |
 | Canvas unusable above ~1,000 nodes | Enterprise repositories unusable | Frontend spike AIS-5 before M2 commits to an approach | Frontend |
 | Explanations are confidently wrong | Reputational and commercial; the product's core claim | Citation validator + `rejected` status + offline eval set; refusing to answer is an acceptable outcome | AI Engineer |
@@ -1485,9 +1495,9 @@ parallel and are expected to change it; each open question names who closes it.
 | 1 | Does `@cdktf/hcl2json` + an in-house position index give accurate line ranges on real repositories? What recall against plan JSON? | Backend spike AIS-4 | §5.3, §13.4, `[ADR-0005]`, M1 sizing |
 | 2 | What are the real file/node ceilings and parse times? | AIS-4 | §5.1 limits |
 | 3 | Can React Flow 12 render 1,000–5,000 nodes acceptably, and does the canvas need a paginated or summarised graph payload? | Frontend spike AIS-5 | §7.4, §13.6, M2 sizing |
-| 4 | Which layout library, within MIT/BSD/Apache/ISC? | AIS-5 | §3 |
+| 4 | Which layout library? **Licence side closed**: `@dagrejs/dagre` (MIT) preferred, `d3-hierarchy` (ISC) fine, `elkjs` (EPL-2.0) permitted unmodified with notices. The quality choice remains the Frontend spike's | AIS-5 (quality); licence closed by AIS-7 | §3 |
 | 5 | Is the `[[node:…]]` / `[[src:path:line]]` citation format sufficient, and what are the real grounding rates? | AI Engineer AIS-6 | §8.2, §8.3 |
-| 6 | Is MPL-2.0 acceptable for a dependency of a proprietary hosted service? Is EPL-2.0? | QA & Security AIS-7 | §3, `[ADR-0005]` |
+| 6 | ~~Is MPL-2.0 acceptable for a dependency of a proprietary hosted service? Is EPL-2.0?~~ **Closed 2026-10-12** by `docs/LICENCE-AND-DEPENDENCY-PLAN.md` §3.3: both yes, unmodified only, notices shipped | Closed — QA & Security AIS-7 | §3, `[ADR-0005]` |
 | 7 | Anthropic commercial terms: training on API inputs, retention, and whether zero-retention is available to us — confirmed in writing | QA & Security AIS-7 | §8.4 |
 | 8 | **Does the product owner accept that normalized expression strings (≤512 chars) are retained, given "raw customer IaC is not retained"?** If not, unresolved attributes lose their explanation and §4.3 must change. | CEO, at the M0 gate | §4.3, §4.9, `[ADR-0007]` |
 | 9 | Hosting target and monthly cost within GBP 60 | CEO, on `[ADR-0009]` | §12, §15 |
@@ -1503,3 +1513,4 @@ wire format, which forces fixtures to be regenerated with a reviewed diff.
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-10-11 | First complete specification. Pre-spike baseline. |
+| 0.2 | 2026-10-12 | ADRs 0009 (hosting and the £60 envelope), 0010 (data access) and 0011 (monorepo and tooling) written, so every `[ADR-NNNN]` reference in this document now resolves. §3 licence position rewritten around QA & Security's rulings: MPL-2.0 and EPL-2.0 cleared **unmodified only**, closing open question 6 and the licence half of open question 4; §11 `licences` gate tightened to match; §15 MPL risk row closed and replaced by the vendor-patch condition. No change to §4, §5, §6, §7 or §8 — the graph model, pipeline, schema, API and AI flow are untouched. |
