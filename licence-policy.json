@@ -1,0 +1,175 @@
+{
+  "$comment": [
+    "Machine-readable encoding of docs/LICENCE-AND-DEPENDENCY-PLAN.md sections 3.2-3.4.",
+    "Consumed by scripts/check-licences.ts (plan section 4.1).",
+    "ALLOWLIST SEMANTICS: an SPDX id that appears in no list below is PROHIBITED.",
+    "A new licence string must be classified by a human before it can ship.",
+    "Owner: QA & Security Engineer. Changes to this file require security review."
+  ],
+  "version": 1,
+  "updated": "2026-10-12",
+  "owner": "QA & Security Engineer",
+  "policy": {
+    "default": "deny",
+    "unknownLicenceIsProhibited": true,
+    "transitiveDependenciesInScope": true,
+    "assetManifestInScope": true
+  },
+  "surfaces": {
+    "server": {
+      "description": "Next.js server, parser worker, database layer. Not distributed to users, so most copyleft triggers do not fire.",
+      "classifiedBy": "not present in the bundler client module list"
+    },
+    "client": {
+      "description": "Anything the bundler emits into JavaScript sent to the browser. THIS IS DISTRIBUTION, to every visitor. All attribution and source-availability obligations fire here.",
+      "classifiedBy": "bundler client module list, never by package.json position"
+    }
+  },
+  "permitted": {
+    "$comment": "Plan section 3.2 - permissive, no condition beyond attribution. Allowed on server and client.",
+    "surfaces": ["server", "client"],
+    "spdx": [
+      "0BSD",
+      "Apache-2.0",
+      "BSD-2-Clause",
+      "BSD-3-Clause",
+      "BlueOak-1.0.0",
+      "CC0-1.0",
+      "ISC",
+      "MIT",
+      "MIT-0",
+      "Python-2.0",
+      "Unlicense",
+      "Zlib"
+    ],
+    "standingObligations": [
+      "Preserve copyright notices and licence text (discharged by generated THIRD-PARTY-LICENCES.md, plan section 3.6).",
+      "Apache-2.0 only: carry forward upstream NOTICE file content. Apache-2.0 section 4 requires it and it is the most commonly missed attribution obligation."
+    ]
+  },
+  "conditional": {
+    "$comment": "Plan section 3.3 - weak copyleft. Permitted with conditions; note the per-licence surface restriction.",
+    "MPL-2.0": {
+      "surfaces": ["server", "client"],
+      "copyleftScope": "file-level",
+      "reason": "MPL-2.0 section 3.3 explicitly permits combining MPL files with proprietary code into a Larger Work. This is the case MPL was written for.",
+      "conditions": [
+        "Unmodified only: never fork, vendor-patch, or inline an MPL dependency.",
+        "Any modification we make to an MPL-covered file must itself be released under MPL-2.0. If a patch is unavoidable, upstream it or publish the patched file.",
+        "Notices preserved in THIRD-PARTY-LICENCES.md."
+      ],
+      "enforcement": "CI records the obligation; the unmodified-only discipline is a code review rule."
+    },
+    "EPL-2.0": {
+      "surfaces": ["server", "client"],
+      "copyleftScope": "modified-works",
+      "reason": "Weak copyleft; permits combination with proprietary code in a Larger Work. The secondary-licence provision grants recipients a GPL-2.0 option, which is a right granted to them, not an obligation on us.",
+      "conditions": [
+        "Unmodified only.",
+        "Attribution in THIRD-PARTY-LICENCES.md.",
+        "PREFERENCE, not prohibition: choose a permissive alternative of comparable quality when one exists. EPL carries more litigation-and-patent text than MPL and is less familiar to reviewers."
+      ],
+      "knownInstance": "elkjs is EPL-2.0 and is client-bundled, therefore distributed. See plan section 3.5."
+    },
+    "LGPL-2.1": { "surfaces": ["server"], "reason": "See lgplClientProhibition." },
+    "LGPL-2.1-only": { "surfaces": ["server"], "reason": "See lgplClientProhibition." },
+    "LGPL-2.1-or-later": { "surfaces": ["server"], "reason": "See lgplClientProhibition." },
+    "LGPL-3.0": { "surfaces": ["server"], "reason": "See lgplClientProhibition." },
+    "LGPL-3.0-only": { "surfaces": ["server"], "reason": "See lgplClientProhibition." },
+    "LGPL-3.0-or-later": { "surfaces": ["server"], "reason": "See lgplClientProhibition." },
+    "CDDL-1.0": { "surfaces": ["server"], "reason": "File-level copyleft; server-side only as a precaution." },
+    "CDDL-1.1": { "surfaces": ["server"], "reason": "File-level copyleft; server-side only as a precaution." },
+    "Artistic-2.0": { "surfaces": ["server"], "reason": "Server-side only as a precaution." },
+    "OpenSSL": { "surfaces": ["server"], "reason": "Server-side only as a precaution." },
+    "WTFPL": {
+      "surfaces": [],
+      "requiresRecordedException": true,
+      "reason": "Permissive in intent, legally sloppy. Allowed only by recorded exception in licence-exceptions.json, and preferably replaced."
+    }
+  },
+  "lgplClientProhibition": {
+    "$comment": "Stated once so the gate and the reviewer read the same sentence.",
+    "rule": "LGPL of any version MUST NOT enter the client bundle.",
+    "reason": "Bundlers perform what is effectively static linking, which triggers LGPL's relinking obligations (LGPL-3.0 section 4) and means shipping object files or equivalent so a user can substitute their own version. Server-side, where nothing is distributed, LGPL is unproblematic.",
+    "severityIfViolated": "release blocker"
+  },
+  "prohibited": {
+    "$comment": "Plan section 3.4. Prohibited on every surface, including transitively.",
+    "entries": [
+      {
+        "spdx": ["AGPL-3.0", "AGPL-3.0-only", "AGPL-3.0-or-later"],
+        "reason": "Network use triggers the source obligation for the ENTIRE combined work. This is the one that could force us to publish Diagram Mapper.",
+        "exceptionsAllowed": false,
+        "note": "Hard prohibition, no exceptions, including transitive. Running an AGPL tool as a separate program in CI (for example trufflehog) is not linking and is out of scope of this prohibition."
+      },
+      {
+        "spdx": ["GPL-1.0", "GPL-2.0", "GPL-2.0-only", "GPL-2.0-or-later", "GPL-3.0", "GPL-3.0-only", "GPL-3.0-or-later"],
+        "reason": "Strong copyleft over the combined work; the mere-aggregation argument is too thin to rest a business on.",
+        "exceptionsAllowed": false
+      },
+      {
+        "spdx": ["SSPL-1.0"],
+        "reason": "Requires releasing the source of the entire service stack if offered as a service. Aimed precisely at us.",
+        "exceptionsAllowed": false
+      },
+      {
+        "spdx": ["BUSL-1.1", "Elastic-2.0", "Commons-Clause", "Confluent-Community-1.0", "RSAL", "PolyForm-Noncommercial-1.0.0", "PolyForm-Shield-1.0.0"],
+        "reason": "Restrict commercial or hosted use OF THE DEPENDENCY. Note the asymmetry: BUSL-1.1 is a fine licence for OUR code and an unacceptable one for a dependency.",
+        "exceptionsAllowed": false
+      },
+      {
+        "spdx": ["CC-BY-NC-1.0", "CC-BY-NC-2.0", "CC-BY-NC-2.5", "CC-BY-NC-3.0", "CC-BY-NC-4.0", "CC-BY-NC-SA-4.0", "CC-BY-NC-ND-4.0", "CC-BY-ND-4.0"],
+        "reason": "Non-commercial or no-derivatives. Incompatible with selling a product.",
+        "exceptionsAllowed": false,
+        "note": "Applies to the asset manifest (fonts, icons, images) as much as to package.json. CC-BY-4.0 without NC/ND is permitted with attribution; see assets."
+      },
+      {
+        "spdx": ["JSON"],
+        "reason": "The 'shall be used for Good, not Evil' clause is unenforceably vague and a known blocker for commercial use. A documented reason to avoid org.json-lineage packages.",
+        "exceptionsAllowed": false
+      }
+    ]
+  },
+  "unresolved": {
+    "$comment": "Plan section 3.4, final row. Unknown is NOT permissive.",
+    "values": ["UNLICENSED", "UNKNOWN", "SEE LICENSE IN", "SEE LICENCE IN", "custom", "", null],
+    "treatment": "prohibited until a human resolves it",
+    "resolution": "Read the upstream repository, then either (a) record the finding in licence-exceptions.json with the actual SPDX id and a source URL, or (b) remove the dependency."
+  },
+  "assets": {
+    "$comment": "Plan section 3.5. Fonts, icon sets and images are dependencies too and are routinely missed because they are not in package.json.",
+    "manifest": "assets/ASSET-LICENCES.json",
+    "rule": "Every font, icon set and image gets an SPDX id and a source URL recorded before it is committed. The CI gate covers the asset manifest as well as package.json.",
+    "preferred": ["MIT", "ISC", "OFL-1.1", "CC0-1.0", "Apache-2.0"],
+    "permittedWithAttribution": ["CC-BY-4.0"],
+    "knownTraps": [
+      "Font Awesome Free mixes CC-BY-4.0 (icons, attribution required) with MIT (code).",
+      "Many icon sets are CC-BY-4.0 and the attribution is mandatory, not courteous.",
+      "Some commercial fonts forbid web embedding outright regardless of purchase."
+    ]
+  },
+  "attribution": {
+    "$comment": "Plan section 3.6.",
+    "outputs": ["THIRD-PARTY-LICENCES.md", "sbom.cyclonedx.json"],
+    "committed": true,
+    "servedAt": "/licences",
+    "reason": "Committed output means a licence change in a dependency shows up as a reviewable diff rather than as a surprise."
+  },
+  "gate": {
+    "$comment": "Plan section 4.1.",
+    "sourceOfTruth": "pnpm licenses list --json --prod",
+    "script": "scripts/check-licences.ts",
+    "failsBuildOn": [
+      "any prohibited licence, including transitive",
+      "any unknown, missing or unparseable licence",
+      "any conditional licence appearing on a surface the policy does not permit for it (notably LGPL in the client bundle)",
+      "any asset in the manifest without an SPDX id and source URL",
+      "any expired entry in licence-exceptions.json"
+    ],
+    "runsOn": ["pull_request", "push:main", "nightly", "pre-release"],
+    "deliberatelyAvoided": [
+      "license-checker (effectively unmaintained)",
+      "hosted licence-compliance services (paid; CEO escalation required before any purchase)"
+    ]
+  }
+}

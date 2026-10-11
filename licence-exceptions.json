@@ -1,0 +1,45 @@
+{
+  "$comment": [
+    "Recorded exceptions to licence-policy.json. Consumed by scripts/check-licences.ts.",
+    "An empty exceptions list is the correct and desirable state. Every entry here is a",
+    "standing obligation somebody has to remember, which is why each one carries an expiry.",
+    "",
+    "RULES, enforced by the gate and not negotiable in review:",
+    "  1. Every entry needs spdx, package, surface, reason, compensatingControl, approver,",
+    "     approved and reviewBy. A missing field fails the build.",
+    "  2. An entry whose reviewBy date has passed FAILS THE BUILD. An exception that cannot",
+    "     expire is a policy change pretending to be an exception.",
+    "  3. Licences with exceptionsAllowed:false in licence-policy.json can NEVER be excepted",
+    "     here. AGPL, GPL, SSPL, BUSL, Elastic, CC-BY-NC/ND and JSON are not available to",
+    "     this file; the gate rejects such an entry even with an approver.",
+    "  4. The approver must be a named human. 'QA & Security Engineer' is a valid approver",
+    "     for a technical exception; anything with legal or commercial weight needs the CEO.",
+    "  5. 'unknown licence' resolutions record the ACTUAL SPDX id found and the sourceUrl",
+    "     where it was found, so the next reader does not repeat the research."
+  ],
+  "version": 1,
+  "updated": "2026-10-12",
+  "owner": "QA & Security Engineer",
+  "schema": {
+    "required": ["spdx", "package", "version", "surface", "reason", "compensatingControl", "approver", "approved", "reviewBy"],
+    "optional": ["sourceUrl", "note"],
+    "surface": ["server", "client", "dev", "tooling"],
+    "expiredEntryFailsBuild": true,
+    "maxDurationDays": 180
+  },
+  "exceptions": [],
+  "example": {
+    "$comment": "NOT ACTIVE. Shape reference only; the gate ignores this key. Delete nothing from it when copying - fill every field.",
+    "spdx": "WTFPL",
+    "package": "some-transitive-package",
+    "version": "1.2.3",
+    "surface": "dev",
+    "reason": "Transitive dev-only dependency of the test runner. WTFPL is permissive in intent but legally sloppy (policy section 3.4).",
+    "compensatingControl": "Dev-only, never bundled or shipped; upstream issue filed asking for an SPDX-valid licence; replacement tracked in AIS-nn.",
+    "approver": "QA & Security Engineer",
+    "approved": "2026-01-01",
+    "reviewBy": "2026-07-01",
+    "sourceUrl": "https://github.com/example/some-transitive-package/blob/main/LICENSE",
+    "note": "Prefer replacing over renewing. A second renewal of the same exception is a signal to drop the dependency."
+  }
+}
