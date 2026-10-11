@@ -1,0 +1,155 @@
+/*
+ * Spike design tokens. Deliberately a token file rather than inline styles, because the
+ * production rule is "no inline styles diverging from the design tokens" and a spike that
+ * sets a precedent of hex-in-JSX is a spike that costs us later.
+ *
+ * Contrast: every --dm-text-* on its paired --dm-surface-* is >= 4.5:1, and every border
+ * used as a non-text state signal is >= 3:1, in both themes. Checked in bench/contrast.mjs.
+ */
+:root {
+  color-scheme: light;
+
+  --dm-surface-canvas: #f6f7f9;
+  --dm-surface-raised: #ffffff;
+  --dm-surface-sunken: #eceef2;
+  --dm-surface-hover: #e6e9ef;
+
+  --dm-text-primary: #16191d;
+  --dm-text-secondary: #53596b;
+  --dm-text-inverse: #ffffff;
+
+  --dm-border-subtle: #d4d8e0;
+  --dm-border-strong: #8b93a5;
+  --dm-border-selected: #1d4ed8;
+
+  --dm-focus-ring: #1d4ed8;
+  --dm-focus-ring-offset: #ffffff;
+
+  --dm-accent: #1d4ed8;
+  --dm-accent-text: #163fb0;
+
+  /* Category hues. Never the only signal — each category also carries a glyph and a
+     type label on the node, per the colour-is-never-the-only-signal rule. */
+  --dm-cat-compute: #2563a8;
+  --dm-cat-network: #0f7a6c;
+  --dm-cat-storage: #8a5a00;
+  --dm-cat-database: #7a3e9d;
+  --dm-cat-identity: #a63a52;
+  --dm-cat-security: #b03a1a;
+  --dm-cat-observability: #4a5a2a;
+  --dm-cat-messaging: #1f6a8c;
+  --dm-cat-lookup: #5a6072;
+  --dm-cat-module: #3d4454;
+  --dm-cat-config: #5a6072;
+  --dm-cat-unknown: #8a3a2a;
+
+  --dm-warn-fg: #8a4a00;
+  --dm-warn-bg: #fdf3e3;
+
+  --dm-space-1: 4px;
+  --dm-space-2: 8px;
+  --dm-space-3: 12px;
+  --dm-space-4: 16px;
+  --dm-space-5: 24px;
+  --dm-space-6: 32px;
+
+  --dm-radius-sm: 4px;
+  --dm-radius-md: 6px;
+  --dm-radius-lg: 10px;
+
+  --dm-font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --dm-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  --dm-text-xs: 11px;
+  --dm-text-sm: 12px;
+  --dm-text-md: 13px;
+  --dm-text-lg: 15px;
+  --dm-text-xl: 18px;
+
+  --dm-shadow-panel: 0 8px 28px rgba(16, 20, 28, 0.18);
+  --dm-shadow-node: 0 1px 2px rgba(16, 20, 28, 0.10);
+
+  /* Fitts's Law: the smallest interactive target in the UI. A 4px resize handle is a
+     defect, so the grip is 16px of hit area with a 3px visual line. */
+  --dm-grip-hit: 16px;
+  --dm-grip-visual: 3px;
+  --dm-min-target: 24px;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --dm-surface-canvas: #0f1115;
+  --dm-surface-raised: #191d24;
+  --dm-surface-sunken: #11141a;
+  --dm-surface-hover: #232832;
+
+  --dm-text-primary: #eef1f6;
+  --dm-text-secondary: #a8b0c0;
+  --dm-text-inverse: #0f1115;
+
+  --dm-border-subtle: #333a47;
+  --dm-border-strong: #7d869a;
+  --dm-border-selected: #7aa2ff;
+
+  --dm-focus-ring: #7aa2ff;
+  --dm-focus-ring-offset: #0f1115;
+
+  --dm-accent: #7aa2ff;
+  --dm-accent-text: #9dbaff;
+
+  --dm-cat-compute: #7fb0ea;
+  --dm-cat-network: #5ac8b6;
+  --dm-cat-storage: #e0b25e;
+  --dm-cat-database: #c99ae6;
+  --dm-cat-identity: #f093a8;
+  --dm-cat-security: #f09476;
+  --dm-cat-observability: #b4cc84;
+  --dm-cat-messaging: #78c0e0;
+  --dm-cat-lookup: #a8b0c0;
+  --dm-cat-module: #c2cade;
+  --dm-cat-config: #a8b0c0;
+  --dm-cat-unknown: #f0a08a;
+
+  --dm-warn-fg: #ecc08a;
+  --dm-warn-bg: #2e2415;
+
+  --dm-shadow-panel: 0 10px 34px rgba(0, 0, 0, 0.55);
+  --dm-shadow-node: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--dm-font-sans);
+  font-size: var(--dm-text-md);
+  color: var(--dm-text-primary);
+  background: var(--dm-surface-canvas);
+}
+
+:focus-visible {
+  outline: 2px solid var(--dm-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--dm-radius-sm);
+}
+
+.dm-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
