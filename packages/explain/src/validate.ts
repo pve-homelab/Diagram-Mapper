@@ -52,6 +52,7 @@ export const REJECTING_CODES = new Set([
   "PURPOSE_CLAIM_VERIFIED",
   "MODEL_CLAIMED_COUNT",
   "FACT_IN_CONNECTIVE",
+  "MARKUP_IN_OUTPUT",
 ]);
 
 export interface GroundingReport {
@@ -95,6 +96,39 @@ const FILE_TOKEN = /\b([A-Za-z0-9_./-]+\.(?:tf|tfvars|tf\.json|hcl))\b/g;
 
 export function filesInText(text: string): string[] {
   return [...new Set([...text.matchAll(FILE_TOKEN)].map((m) => m[1]!))];
+}
+
+/**
+ * The exfiltration channel (THREAT-MODEL F-06 harm 2). A steered model emits
+ * an image or link whose URL carries data, and the victim's browser fetches
+ * it. The renderer and the CSP are the primary controls; this is the server
+ * side of the same line, so a renderer regression is not the only thing
+ * between an injection and a leak.
+ */
+const MARKUP_PATTERNS: { what: string; re: RegExp }[] = [
+  { what: "markdown image", re: /!\[[^\]]*\]\([^)]*\)?/g },
+  { what: "markdown link", re: /\[[^\]]*\]\([^)]*\)?/g },
+  { what: "HTML tag", re: /<\/?[A-Za-z][^>]*>?/g },
+  // Sentence punctuation after a URL is prose, not part of the URL.
+  { what: "URL", re: /\b(?:https?|ftp|wss?|file):\/\/(?:[^\s"'<>)\]]*[^\s"'<>)\].,;:!?])?/gi },
+  { what: "script URL", re: /\b(?:javascript|vbscript)\s*:|\bdata:[a-z]+\/[a-z0-9.+-]+/gi },
+];
+
+/**
+ * Markup in model-authored text. A match is allowed only when the whole match
+ * appears verbatim in `evidence` — a URL that is genuinely an attribute value
+ * the claim cites. Text with no citations (connectives, refusals) has no
+ * evidence, so it may carry none.
+ */
+export function markupIn(text: string, evidence = ""): string[] {
+  const hits: string[] = [];
+  for (const { what, re } of MARKUP_PATTERNS) {
+    for (const m of text.matchAll(re)) {
+      if (evidence && evidence.includes(m[0])) continue;
+      hits.push(`${what} ${JSON.stringify(m[0].slice(0, 60))}`);
+    }
+  }
+  return hits;
 }
 
 /** Connective prose may not carry facts: no digits, no addresses, no paths. */
@@ -188,6 +222,15 @@ export function validateExplanation(
     for (const f of filesInText(c.text)) {
       if (!fileLines.has(f)) {
         flag("INVENTED_FILE_IN_TEXT", `claim ${c.id} names file \`${f}\`, which does not exist in the analysed commit`);
+      }
+    }
+
+    /* --- no exfiltration channel in what the user will render ----------- */
+    {
+      const evidence = c.citations.map((cit) => src.read(cit.file, cit.startLine, cit.endLine) ?? "").join("\n");
+      const texts = [c.text, ...Object.values(c.values ?? {}).filter((v): v is string => typeof v === "string")];
+      for (const hit of texts.flatMap((t) => markupIn(t, evidence))) {
+        flag("MARKUP_IN_OUTPUT", `claim ${c.id} carries ${hit}, which is not in its cited source`);
       }
     }
 
@@ -303,10 +346,12 @@ export function validateExplanation(
     if (DIGIT.test(b.text) || addressesInText(b.text).length > 0 || filesInText(b.text).length > 0) {
       fail("FACT_IN_CONNECTIVE", `connective text carries a fact outside a claim: ${JSON.stringify(b.text)}`);
     }
+    for (const hit of markupIn(b.text)) fail("MARKUP_IN_OUTPUT", `connective text carries ${hit}`);
   }
 
   /* --- refusal text must not invent either ------------------------------ */
   for (const u of e.unanswered ?? []) {
+    for (const hit of markupIn(u.detail)) fail("MARKUP_IN_OUTPUT", `refusal text carries ${hit}`);
     for (const addr of addressesInText(u.detail)) {
       // A refusal is allowed to name the thing it is refusing about, and that
       // thing is by definition absent. Only a *claim* of existence is a fault.

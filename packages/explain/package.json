@@ -8,8 +8,9 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "test": "node --test \"test/*.test.ts\"",
     "eval": "node ../../eval/run.ts",
-    "eval:ci": "node ../../eval/run.ts --suite=all --provider=recorded",
+    "eval:ci": "node --test \"test/*.test.ts\" && node ../../eval/run.ts --suite=all --provider=recorded",
     "eval:live": "node ../../eval/run.ts --suite=all --provider=anthropic"
   },
   "dependencies": {

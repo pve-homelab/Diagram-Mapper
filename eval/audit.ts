@@ -251,6 +251,26 @@ export function auditExplanation({ explanation, graph, fixtureRoot }: AuditInput
     }
   }
 
+  /* --- 8a. nothing the browser could fetch or execute ------------------- */
+  // Token-based rather than pattern-based, so it does not share the gate's
+  // regexes: split on whitespace and reject any token that is a URL, an image
+  // or link opener, or a tag opener, unless that exact token is in a line the
+  // claim cites.
+  const fetchable = (tok: string) =>
+    /:\/\//.test(tok) || tok.includes("![") || tok.includes("](") || /<[a-z/!]/i.test(tok) ||
+    /^(javascript|vbscript|data):/i.test(tok.replace(/^[("'[]+/, ""));
+  const scanText = (text: string, cites: { file: string; startLine: number; endLine: number }[], id: string | null) => {
+    const cited = cites.map((x) => readSpan(x.file, x.startLine, x.endLine) ?? "").join("\n");
+    for (const tok of text.split(/\s+/)) {
+      if (!tok || !fetchable(tok)) continue;
+      if (cited && cited.includes(tok.replace(/[.,;)]+$/, ""))) continue;
+      add("EXFILTRATION_CHANNEL", id, `output carries ${JSON.stringify(tok.slice(0, 60))}, which is not in cited source`);
+    }
+  };
+  for (const c of explanation.claims) scanText(c.text, c.citations, c.id);
+  for (const b of explanation.narrative) if (b.type === "connective") scanText(b.text, [], null);
+  for (const u of explanation.unanswered) scanText(u.detail, [], null);
+
   /* --- 8. every narrative claim reference resolves --------------------- */
   const claimIds = new Set(explanation.claims.map((c) => c.id));
   for (const b of explanation.narrative) {
