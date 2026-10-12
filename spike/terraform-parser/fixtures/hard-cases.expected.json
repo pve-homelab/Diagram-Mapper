@@ -1,0 +1,62 @@
+{
+  "_comment": "Written by hand from fixtures/hard-cases/*.tf, line by line. Not captured output. Format: 'from -> to kind file:line'.",
+  "edges": {
+    ".": [
+      "aws_instance.app -> aws_subnet.private reference main.tf:71",
+      "aws_instance.app -> aws_vpc.main depends_on main.tf:76",
+      "aws_instance.app -> provider.aws.replica provider main.tf:74",
+      "aws_instance.app -> var.instances reference main.tf:70",
+      "aws_route_table_association.a -> module.net reference main.tf:115",
+      "aws_security_group.app -> aws_vpc.main reference main.tf:88",
+      "aws_security_group.app -> var.ingress_rules reference main.tf:91",
+      "aws_subnet.private -> aws_vpc.main reference main.tf:56",
+      "aws_subnet.private -> aws_vpc.main reference main.tf:57",
+      "aws_subnet.private -> var.subnet_count reference main.tf:55",
+      "aws_subnet.public -> aws_vpc.main reference main.tf:63",
+      "aws_subnet.public -> var.cidr reference main.tf:64",
+      "aws_vpc.main -> var.cidr reference main.tf:49",
+      "local.account -> data.aws_caller_identity.current reference main.tf:45",
+      "local.arns -> aws_subnet.private reference main.tf:37",
+      "local.arns -> data.aws_caller_identity.current reference main.tf:38",
+      "local.dns -> var.dns_servers reference main.tf:43",
+      "local.subnet_ids -> aws_subnet.private reference main.tf:32",
+      "module.net -> aws_vpc.main reference main.tf:109",
+      "module.net -> local.subnet_ids reference main.tf:110",
+      "output.private_subnet_ids -> local.subnet_ids reference outputs.tf:6",
+      "output.vpc_id -> aws_vpc.main reference outputs.tf:2",
+      "provider.aws -> var.region reference main.tf:12",
+      "provider.aws.replica -> var.replica_region reference main.tf:17"
+    ],
+    "modules/net": [
+      "aws_route_table.this -> var.vpc_id reference modules/net/main.tf:10",
+      "output.first_subnet_id -> var.subnet_ids reference modules/net/outputs.tf:2",
+      "output.route_table_id -> aws_route_table.this reference modules/net/outputs.tf:6"
+    ]
+  },
+  "unresolved": {
+    ".": [
+      "aws_eip.nat target-not-declared-in-unit main.tf:121",
+      "aws_instance.app for_each-not-statically-known main.tf:70",
+      "aws_route_table_association.a module-output-not-declared-in-target-unit main.tf:116",
+      "aws_security_group.app dynamic-block-cardinality-unknown main.tf:90",
+      "aws_security_group.app dynamic-block-cardinality-unknown main.tf:96",
+      "aws_subnet.private count-not-statically-known main.tf:55",
+      "data.terraform_remote_state.network remote-state-outside-repository main.tf:22"
+    ],
+    "modules/net": []
+  },
+  "crossModuleEdges": [
+    "module.net -> modules/net module_source main.tf:107",
+    "aws_route_table_association.a -> modules/net:output.first_subnet_id module_output main.tf:115"
+  ],
+  "mustNotAppear": [
+    "aws_vpc.decoy",
+    "aws_vpc.documentation_only",
+    "aws_vpc.commented_out",
+    "s.id",
+    "cidr.value",
+    "tags",
+    "root_block_device",
+    "spec.json"
+  ]
+}

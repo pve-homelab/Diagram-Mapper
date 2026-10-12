@@ -1,0 +1,11 @@
+{
+  "name": "spike-terraform-parser",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@cdktf/hcl2json": "0.21.0"
+  }
+}
