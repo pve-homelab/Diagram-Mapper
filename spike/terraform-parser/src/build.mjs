@@ -240,7 +240,15 @@ export async function parseUnit(dir, repoRoot) {
           : ref.target;
 
         const isDependsOn = ref.path[0] === 'depends_on';
-        const line = findTextLine(lines, b.line, b.endLine, ref.raw.split('[')[0]);
+        // Search from the owning top-level attribute, not the block start: the
+        // same traversal often appears in both depends_on and triggers, and the
+        // first textual hit would cite the wrong line.
+        const needle = ref.raw.split('[')[0];
+        const from = ref.path[0] ? findMemberLine(lines, b.line, b.endLine, ref.path[0]) : b.line;
+        let line = findTextLine(lines, from, b.endLine, needle);
+        if (line === from && !(lines[from - 1] ?? '').includes(needle)) {
+          line = findTextLine(lines, b.line, b.endLine, needle);
+        }
         const key = `${fromId}|${toId}|${isDependsOn}|${ref.attr ?? ''}`;
         if (seen.has(key)) continue;
         seen.add(key);
@@ -452,6 +460,16 @@ function pick(json, keys, occurrence = 0) {
   }
   const arr = asArray(cur);
   return arr.length > occurrence ? arr[occurrence] : (arr[0] ?? null);
+}
+
+/** Line of the first `name =` attribute or `name {` / `dynamic "name"` nested block. */
+function findMemberLine(lines, startLine, endLine, name) {
+  const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`^\\s*(?:${esc}\\s*(?:=|\\{)|dynamic\\s+"${esc}")`);
+  for (let i = startLine; i < endLine; i++) {
+    if (re.test(lines[i] ?? '')) return i + 1;
+  }
+  return startLine;
 }
 
 export function isTerraformFile(f) {

@@ -27,7 +27,9 @@
       "provider.aws -> var.region reference main.tf:12",
       "provider.aws.replica -> var.replica_region reference main.tf:17",
       "random_id.suffix -> provider.random provider extra.tf:3",
-      "output.codes -> local.region_codes reference extra.tf:7"
+      "output.codes -> local.region_codes reference extra.tf:7",
+      "time_sleep.wait -> random_id.suffix depends_on extra.tf:12",
+      "time_sleep.wait -> random_id.suffix reference extra.tf:16"
     ],
     "modules/net": [
       "aws_route_table.this -> var.vpc_id reference modules/net/main.tf:10",
