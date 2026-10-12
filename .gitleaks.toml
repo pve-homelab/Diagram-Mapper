@@ -1,0 +1,42 @@
+# Secret scanning rules (docs/LICENCE-AND-DEPENDENCY-PLAN.md section 4.3).
+# Default gitleaks rules plus this product's own secret shapes.
+title = "Diagram Mapper"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "dm-anthropic-api-key"
+description = "Anthropic API key"
+regex = '''sk-ant-[A-Za-z0-9_\-]{20,}'''
+keywords = ["sk-ant-"]
+
+[[rules]]
+id = "dm-stripe-live-key"
+description = "Stripe live secret or restricted key"
+regex = '''(?:sk|rk)_live_[A-Za-z0-9]{16,}'''
+keywords = ["sk_live_", "rk_live_"]
+
+[[rules]]
+id = "dm-private-key-pem"
+description = "PEM private key (GitHub App private key and similar)"
+regex = '''-----BEGIN (?:RSA |EC |OPENSSH |ENCRYPTED )?PRIVATE KEY-----'''
+keywords = ["private key"]
+
+[[rules]]
+id = "dm-assigned-secret-env"
+description = "A value assigned to one of our secret environment variables"
+regex = '''(?:DATA_ENCRYPTION_KEY|AUTH_SECRET|GITHUB_WEBHOOK_SECRET|STRIPE_WEBHOOK_SECRET|GITHUB_APP_PRIVATE_KEY)[ \t]*[=:][ \t]*["']?([A-Za-z0-9+/=_\-]{16,})'''
+secretGroup = 1
+keywords = ["data_encryption_key", "auth_secret", "webhook_secret", "github_app_private_key"]
+
+[[rules]]
+id = "dm-terraform-aws-secret"
+description = "Terraform-shaped AWS secret key assignment"
+regex = '''(?i)secret_key[ \t]*=[ \t]*"([A-Za-z0-9/+=]{40})"'''
+secretGroup = 1
+keywords = ["secret_key"]
+
+[allowlist]
+description = "Lockfile integrity hashes are not secrets"
+paths = ['''pnpm-lock\.yaml''']

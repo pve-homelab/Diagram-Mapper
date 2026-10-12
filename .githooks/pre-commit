@@ -1,0 +1,12 @@
+#!/bin/sh
+# Pre-commit: secret scan on staged changes, then lint/format on staged files.
+# Enable once per clone:  git config core.hooksPath .githooks
+set -e
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "pre-commit: gitleaks is not installed, refusing to commit (see README, 'Setup')." >&2
+  exit 1
+fi
+gitleaks git --pre-commit --staged --redact --no-banner --config .gitleaks.toml
+
+pnpm exec biome check --staged --no-errors-on-unmatched --colors=off
