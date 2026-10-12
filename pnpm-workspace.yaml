@@ -1,0 +1,33 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# Supply-chain hardening, docs/LICENCE-AND-DEPENDENCY-PLAN.md section 4.5.
+# Install-time scripts are off by default; only packages listed here may run them.
+onlyBuiltDependencies:
+  - esbuild
+# Do not install a version until it has been public for 3 days (minutes).
+minimumReleaseAge: 4320
+
+# One version of each shared dependency across the workspace (ADR-0011 decision 4).
+catalog:
+  "@biomejs/biome": 2.2.4
+  "@types/node": ^22.18.0
+  "@types/pg": ^8.15.5
+  "@types/react": ^19.1.13
+  "@types/react-dom": ^19.1.9
+  "@vitest/coverage-v8": ^3.2.4
+  drizzle-kit: ^0.31.4
+  drizzle-orm: ^0.45.2
+  next: ^15.5.3
+  pg: ^8.16.3
+  react: ^19.1.1
+  react-dom: ^19.1.1
+  typescript: ^5.9.2
+  vitest: ^3.2.4
+  zod: ^3.25.76
+
+# Security overrides. Remove each once the parent ships a patched version.
+overrides:
+  # next@15 pins postcss 8.4.x (GHSA-r28c-9q8g-f849 and related, high). Build-time only.
+  postcss: ^8.5.23

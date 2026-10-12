@@ -1,0 +1,32 @@
+{
+  "name": "diagram-mapper",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Diagram Mapper: Terraform repository to interactive, explainable resource graph.",
+  "packageManager": "pnpm@10.18.0",
+  "engines": {
+    "node": ">=22.12 <23 || >=24",
+    "pnpm": "10.18.0"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm --filter @diagram-mapper/web dev",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "biome ci .",
+    "format": "biome format --write .",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:boundaries": "node scripts/check-boundaries.ts",
+    "licences": "node scripts/check-licences.ts",
+    "db:migrate": "pnpm --filter @diagram-mapper/db migrate",
+    "db:generate": "pnpm --filter @diagram-mapper/db generate"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "catalog:",
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

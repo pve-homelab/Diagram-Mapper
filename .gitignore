@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# test output
+coverage/
+playwright-report/
+test-results/
+
+# environment: real values never enter the repository; .env.example holds names only
+.env
+.env.*
+!.env.example
+
+# scan scratch space: raw customer IaC must never be retained (ADR-0007)
+.scan-scratch/
+
+# editors and OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log
