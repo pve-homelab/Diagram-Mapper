@@ -87,16 +87,19 @@ export interface Plan {
 }
 
 /**
- * Caps are set so that AI cost cannot exceed ~12% of subscription revenue at
- * 100% cap utilisation on the launch model. Everything above that is gross
- * margin for hosting and the business. A tenant that reaches its cap keeps the
- * diagram, the node panel and search — only chat stops (TECH-SPEC §4 failure
- * table), so a cap is a degradation, never an outage.
+ * Prices and caps are the recommended plans in `docs/market-research.md` §4.4.
+ * Team is modelled at its 3-seat minimum: £29/seat and 3M tokens/seat, pooled.
+ *
+ * At 100% cap utilisation on claude-sonnet-5 with a conservative 20% output
+ * share, AI cost is ~30% of revenue on both paid plans; at the output share
+ * the evaluation run measures (~8%) it is ~22%. A tenant that reaches its cap
+ * keeps the diagram, the node panel and search — only chat stops (TECH-SPEC
+ * §8.6), so a cap is a degradation, never an outage.
  */
 export const PLANS: Record<string, Plan> = {
   free: { id: "free", priceGbp: 0, monthlyTokenCap: 0, requiresOwnApiKey: true, repoLimit: 1 },
-  solo: { id: "solo", priceGbp: 12, monthlyTokenCap: 1_200_000, requiresOwnApiKey: false, repoLimit: 3 },
-  team: { id: "team", priceGbp: 49, monthlyTokenCap: 6_000_000, requiresOwnApiKey: false, repoLimit: 15 },
+  solo: { id: "solo", priceGbp: 19, monthlyTokenCap: 2_000_000, requiresOwnApiKey: false, repoLimit: 3 },
+  team: { id: "team", priceGbp: 87, monthlyTokenCap: 9_000_000, requiresOwnApiKey: false, repoLimit: 15 },
 };
 
 /** Worst-case monthly AI spend if a tenant burns its entire cap. */
