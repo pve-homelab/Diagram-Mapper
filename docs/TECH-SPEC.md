@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| **Version** | 0.2 — pre-spike baseline, with the licence review's rulings folded in |
+| **Version** | 0.3 — pre-spike baseline, with the licence review's rulings and the threat model's specification-level findings folded in |
 | **Status** | Draft for M0 sign-off. Will be revised once the three M0 spikes land (see §16). |
 | **Owner** | CTO & Principal Architect |
-| **Date** | 2026-10-12 |
+| **Date** | 2026-10-13 |
 | **Supersedes** | Nothing. First technical specification for this repository. |
 | **Source requirements** | `PROMPT.md`, `First_Team_outcome.md`, `commercial launch ready product.md`, `pricinples and contraints.md` |
 | **Decisions behind this document** | `docs/adr/0001` … `docs/adr/0011` |
@@ -108,7 +108,7 @@ and leaves the numbers to Product.
 | Module | Owner | May import | MUST NOT | Communication |
 |---|---|---|---|---|
 | `packages/graph` | CTO (schema) / Backend | `zod` only | Any I/O, any DB, any network, any Node built-in except `crypto` | Pure functions + types. The **single source of truth** for the graph wire format. |
-| `packages/parser` | Backend | `packages/graph`, `@cdktf/hcl2json` | Network, DB, filesystem writes outside its scratch argument | `parse(files: FileInput[]) => ParseResult` |
+| `packages/parser` | Backend | `packages/graph`, `@cdktf/hcl2json` | Network, DB, **any** filesystem access — it receives file contents in memory from the worker's Discover stage (§5.2) | `parse(files: FileInput[]) => ParseResult` |
 | `packages/db` | Backend | `packages/graph`, `drizzle-orm`, `pg` | Business logic, HTTP, AI | `withTenant(tenantId, fn)` is the **only** exported way to obtain a query handle (§6.4) |
 | `packages/explain` | AI Engineer | `packages/graph`, `packages/db` (read models only), `@anthropic-ai/sdk` | Writing graph rows, direct `pg` access | `assembleContext()`, `explain()`, `validateCitations()` |
 | `packages/ui` | Frontend | `react`, `@xyflow/react`, Tailwind | `packages/db`, `packages/parser` | React components |
@@ -158,6 +158,7 @@ Confirmed with reasoning in `[ADR-0002]`. Declined options and their costs are r
 | Tests | Vitest, Playwright | — | MIT / Apache-2.0 | £0 |
 | Lint/format | Biome | 1.x/2.x | MIT ∪ Apache-2.0 | £0 |
 | GitHub client | `octokit` | — | MIT | £0 |
+| Tar parsing (worker only) | `tar` (node-tar) — its streaming `Parser` only; we never call its extractor (§5.1) | 7.x | ISC | £0 |
 
 **Licence position.** Every dependency above is permissive (MIT / ISC / Apache-2.0 /
 BSD / PostgreSQL) except where noted. The authoritative policy is QA & Security's
@@ -332,7 +333,7 @@ const GraphNode = z.object({
     hasProvisioner: z.boolean(),
     lifecycle:      z.record(AttributeValue).nullable(),
     moduleSource:   z.string().nullable(),   // module_call only
-    moduleResolution: z.enum(["local_resolved","remote_unsupported","not_found"]).nullable(),
+    moduleResolution: z.enum(["local_resolved","remote_unsupported","not_found","rejected"]).nullable(),
   }),
   display:      z.object({                  // derived, regenerable
     label:      z.string(),                 // "aws_subnet.private"
@@ -502,8 +503,9 @@ section that needs the product owner's explicit confirmation rather than my judg
 raised as an open question in §16 and recorded in `[ADR-0007]`.
 
 **Source text at read time** is re-fetched on demand from GitHub (§7.6), held in memory
-for the request, cached for at most 15 minutes in-process, and never written to
-PostgreSQL, to disk, or to any log.
+for the request only, and never written to PostgreSQL, to disk, or to any log. There is
+**no cross-request source cache at launch** — see §7.6.1 for the rule and the reason
+(threat model F-03).
 
 ---
 
@@ -514,9 +516,11 @@ pg-boss job per scan, `scan.ingest`, with a **10-minute wall-clock budget** and 
 **2 attempts** (the second attempt only for transient GitHub/network errors; a parse
 failure is never retried, because it is deterministic).
 
-Each stage below is a separate exported function with its own unit tests. Stages 2–8 are
-**pure** — they take data and return data, touching neither network nor database — which
-is what makes the golden-fixture tests in §13 possible.
+Each stage below is a separate exported function with its own unit tests. Stages 3–8 are
+**pure** — they take data and return data, touching neither network, database nor
+filesystem — which is what makes the golden-fixture tests in §13 possible. Stage 2
+(Discover) is the only stage that reads the scratch filesystem, and it is the boundary at
+which untrusted paths become an in-memory file set (§5.2).
 
 ### 5.1 Stage 1 — Acquire (network)
 
@@ -525,21 +529,115 @@ is what makes the golden-fixture tests in §13 possible.
 2. Resolve `ref` → `commitSha` via `GET /repos/{owner}/{repo}/commits/{ref}`.
    If a published snapshot already exists for this `(repositoryId, commitSha, parserVersion)`,
    finish immediately and reuse it. Re-parsing identical input is waste.
-3. `GET /repos/{owner}/{repo}/tarball/{commitSha}`, streamed to a per-scan scratch
-   directory under `${SCAN_SCRATCH_ROOT}/${scanId}` (tmpfs where available, `0700`).
+3. `GET /repos/{owner}/{repo}/tarball/{commitSha}`, streamed **directly** through gunzip
+   into the extractor (step 4). The tarball itself is never written anywhere. Extracted
+   files land in a per-scan scratch directory `${SCAN_SCRATCH_ROOT}/${scanId}` (`0700`),
+   and `SCAN_SCRATCH_ROOT` is **mandatorily tmpfs** (§5.1.2).
    Not `git clone`: we need one tree, not history.
-4. Extract with hard limits enforced **during** extraction, not after:
-   compressed ≤ 50 MB, uncompressed ≤ 250 MB, ≤ 20,000 entries, path traversal and
-   symlinks rejected outright, no entry written outside the scratch root.
+4. Extract under the rules in §5.1.1, with hard limits enforced **during** extraction, not
+   after: compressed ≤ 50 MB, uncompressed ≤ 250 MB, ≤ 20,000 entries.
 
 Limits (launch): ≤ 500 parseable `.tf`/`.tf.json` files, ≤ 2 MB per file, ≤ 5,000 graph
 nodes. Exceeding any limit produces a hard diagnostic (`REPO_TOO_LARGE`,
 `TOO_MANY_FILES`, `GRAPH_TOO_LARGE`) and no snapshot. These numbers are first-pass and are
 the Backend spike's to confirm (§16).
 
+#### 5.1.1 Extraction rules (threat model F-05)
+
+The archive is untrusted input from a repository the attacker controls. An arbitrary
+write in the worker is a credible path to code execution in the one process that holds
+GitHub installation tokens, so this is specified rather than left to the implementer.
+
+**Mechanism.** Use the maintained `tar` (node-tar, ISC) package's streaming **`Parser`
+only** — it handles the tar format, pax headers and GNU long-name extensions, which is the
+part worth not hand-rolling. Do **not** use its `extract()` writer. We write each accepted
+entry ourselves through a ~60-line writer in `apps/worker/src/acquire/write-entry.ts`, so
+that the path we validate and the path we open are the same value by construction. This
+is a deliberate variation on the threat model's "maintained extractor in its strictest
+mode": node-tar's extractor exposes no hook between its own path resolution and `open()`,
+so the write-time containment assertion F-05 asks for cannot be added to it. Owning the
+~60 lines that open files is cheaper than trusting a check we cannot see.
+
+Rules, each MUST, each with its own diagnostic and its own hostile-archive fixture (§13.5):
+
+1. **Entry-type allowlist.** Accept only regular files (`0`, `\0` — `File`/`OFile`) and
+   directories (`5`). Pax headers (`x`, `g`) are consumed by the parser as metadata and
+   never written. **Reject the whole archive** (`ARCHIVE_ENTRY_REJECTED`, with the entry
+   type) on any other type: symlink (`2`), **hardlink (`1`)**, character/block device
+   (`3`/`4`), FIFO (`6`), contiguous (`7`), or anything unknown. Reject, never skip — a
+   repository whose archive contains these is not one we need to analyse, and skipping
+   creates a second code path to get wrong.
+2. **GNU `L`/`K` long names** are resolved by node-tar into the entry's final path before
+   our writer sees it. We therefore do not reject them by header type; we validate the
+   **final, fully resolved path** that we are about to write (rule 3). That is the string
+   the threat model's "parser differential" concern is about, and validating it is the
+   correct defence. This is the one point where the spec differs from F-05's wording;
+   the reasoning is recorded so QA & Security can assess it.
+3. **Path validation on the resolved path, at write time.** Strip GitHub's single leading
+   `{owner}-{repo}-{sha}/` component, then: reject absolute paths, any `..` segment after
+   POSIX normalisation, any NUL byte, any backslash, and any path whose NFC-normalised,
+   case-folded form equals one already written in this archive
+   (`ARCHIVE_PATH_COLLISION`). Then, **immediately before opening**:
+   `realpath(dirname(target))` MUST be the scan root or a descendant of it, compared on
+   path segments, never with `String.startsWith` (`/scan_1` is a string prefix of
+   `/scan_10`). Violation → `ARCHIVE_PATH_ESCAPE`, whole archive rejected.
+4. **Open with `O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW`, mode `0600`.** `O_EXCL` makes a
+   duplicate entry an error rather than an overwrite; `O_NOFOLLOW` means that even if a
+   link somehow existed, we would not write through it. Directories are created `0700`
+   with `mkdir`, never `mkdir -p` across an existing path component we did not create.
+5. **Byte limits as bytes are written.** The uncompressed counter is incremented per
+   chunk and the stream is **aborted mid-entry** when it passes 250 MB
+   (`REPO_TOO_LARGE`) — not checked after each entry. The compressed counter is on the
+   HTTP response stream. The entry counter aborts at entry 20,001.
+6. **Least privilege does the work validation might miss.** The worker container runs as
+   a non-root UID, with a **read-only root filesystem**, no added capabilities, and the
+   scratch tmpfs as its only writable path. An escape that beat rules 1–5 would still
+   write nowhere useful.
+
+Any rejection is a hard stop: no snapshot, scratch destroyed, diagnostic shown with the
+offending entry's path (which is the customer's own path, so it is safe to show them).
+
+#### 5.1.2 Scratch storage: tmpfs is mandatory, and cleanup does not rely on `finally` (threat model F-11)
+
+A `finally` block does not run on `SIGKILL`, an OOM kill, or host loss — and an OOM kill is
+the realistic outcome of a hostile 250 MB repository. "tmpfs where available" is how the
+non-retention promise quietly stops being true in one environment. So:
+
+1. **`SCAN_SCRATCH_ROOT` MUST be a tmpfs mount.** At startup the worker calls
+   `fs.statfs(SCAN_SCRATCH_ROOT)` and **exits non-zero** unless the filesystem type is
+   `TMPFS_MAGIC` (`0x01021994`). There is no override flag in production; the test
+   environment uses a real tmpfs too (`tmpfs:` in the Compose file costs nothing). A
+   restart, crash or host loss therefore guarantees the bytes are gone.
+   Deployment detail for `[ADR-0009]`'s Compose file:
+   `tmpfs: ["/scratch:size=320m,mode=0700,uid=<worker uid>,noexec,nosuid,nodev"]` —
+   320 MB covers the 250 MB uncompressed cap with headroom, and counts against the host's
+   4 GB of RAM, which is accepted.
+2. **Boot-time sweep.** Before the worker subscribes to the queue, it deletes everything
+   under `SCAN_SCRATCH_ROOT` and logs the count of directories removed (count only,
+   never names). Non-zero is an `info` event, because after a crash it is expected.
+3. **Periodic sweep.** Every 5 minutes, delete any directory under the scratch root older
+   than the 10-minute scan budget plus 5 minutes' margin, and raise
+   `SCRATCH_ORPHAN_FOUND` as an **alert** — an orphan while the process is alive means the
+   `finally` path is broken.
+4. **`SIGTERM` handler** for the graceful path: stop taking jobs, abort the current scan,
+   run its cleanup, exit. The `finally` in §5.9 stays as the normal path.
+5. **One scan per worker process** (a single pg-boss `work()` subscription with batch
+   size 1 for `scan.ingest`, asserted by a startup check), and the
+   scratch tmpfs is per worker container, never a shared volume. There is therefore never a
+   concurrently running sibling scan directory for a traversal to reach — this removes the
+   valuable target behind F-01a rather than relying only on winning a path check (§5.4).
+   At launch volumes, one worker processes scans serially; a second worker is a second
+   container with its own tmpfs.
+
 ### 5.2 Stage 2 — Discover
 
-Walk the extracted tree and build the file manifest.
+Walk the extracted tree and build the file manifest. Discover is the **only stage that
+reads the filesystem**; it reads every included file into memory as a `FileInput`
+keyed by its normalised repository-relative path, and stages 3–8 operate on that
+in-memory set alone. Each file is `lstat`ed (MUST be a regular file) and its `realpath`
+MUST be contained in the scan root by segment comparison before it is read; a violation
+is `ARCHIVE_PATH_ESCAPE` and stops the scan. After Discover, nothing in the pipeline can
+name a file that was not in the archive.
 
 - **Included:** `**/*.tf`, `**/*.tf.json`, `**/*.tfvars`, `**/*.tfvars.json`,
   `**/terraform.tfvars{,.json}`, `**/.terraform.lock.hcl` (provider version strings only).
@@ -579,6 +677,26 @@ arbitrary input. They are the only components that touch untrusted customer byte
   `MODULE_SOURCE_UNSUPPORTED` diagnostic. Its internals are absent and the UI says so
   explicitly. Fetching arbitrary URLs on behalf of customers is a supply-chain and SSRF
   exposure we are not taking at launch (§15).
+- **Containment rule (threat model F-01a).** A local `source` is resolved **lexically,
+  against the in-memory file set from Discover — never against the filesystem**:
+  1. Reject before resolving if the `source` is absolute, has a URI scheme (`file://`
+     included), contains a NUL byte or a backslash → `MODULE_PATH_ESCAPES_REPO`.
+  2. Join it to the calling module's repository-relative directory and POSIX-normalise.
+     If the result has **any** leading `..` segment — i.e. it climbs above the repository
+     root — reject with `MODULE_PATH_ESCAPES_REPO`. **Reject, never clamp**: clamping
+     `../../x` to `x` would silently analyse a different module than the one written.
+  3. Look the normalised directory up in the Discover file set. Its files are those whose
+     keys have it as their exact parent directory. No match → `MODULE_PATH_NOT_FOUND`.
+
+  Because stage 4 is pure and only ever indexes into a map that Discover built from
+  the contained archive, a module source has no way to name a byte outside the scan,
+  regardless of what string it contains. The `realpath` containment check lives in
+  Discover (§5.2) and extraction (§5.1.1), where the filesystem is actually touched.
+  Defence in depth: one scan per worker process and a per-container tmpfs mean there
+  is no concurrent sibling scan directory to reach even if both checks failed (§5.1.2).
+  An escaping module call becomes a node with `moduleResolution: "rejected"` and the scan
+  otherwise continues — it is the customer's own configuration error or an attack, and in
+  neither case should it cost them the rest of their diagram.
 - A relative source that does not exist → `MODULE_PATH_NOT_FOUND`, `moduleResolution: "not_found"`.
 - Module nesting depth is capped at 8 (`depth_limit`); recursion through a cycle of local
   module paths is detected and reported, never followed.
@@ -663,18 +781,21 @@ In a single transaction, under the tenant GUC (§6.4):
 Then, in a `finally` that runs on every path including failure and timeout: recursively
 remove the scratch directory and **assert it is gone**. Failure to remove it is a
 `SCRATCH_CLEANUP_FAILED` alert, not a silent log line — it is the one failure that breaks
-the non-retention promise.
+the non-retention promise. The `finally` is the normal path, not the guarantee: the
+guarantee is that the scratch root is tmpfs plus the boot and periodic sweeps in §5.1.2,
+which hold when the process is `SIGKILL`ed, OOM-killed or the host disappears.
 
 ### 5.10 What crosses the boundary — summary
 
 | Data | Where it lives | Lifetime |
 |---|---|---|
-| Repository tarball, file contents | worker scratch dir, tmpfs | the scan, destroyed in `finally` |
+| Repository tarball | never stored — streamed through gunzip into the extractor | the HTTP response |
+| Extracted file contents | worker scratch dir on **mandatory** tmpfs, then worker memory | the scan; destroyed in `finally`, and by the boot/periodic sweeps if the process dies (§5.1.2) |
 | `terraform plan` JSON upload | worker memory | the scan |
 | GitHub installation token | worker memory | ≤ 1 hour, never persisted or logged |
 | Graph (nodes, edges, attributes, expressions ≤512 chars) | PostgreSQL | until the customer deletes the repository or tenant |
 | File manifest (paths, sizes, hashes) | PostgreSQL | same |
-| Source snippets for display/chat | process memory, ≤ 15 min cache | the request |
+| Source snippets for display/chat | process memory, per-request memo only — no cross-request cache (§7.6.1) | the request |
 
 ---
 
@@ -700,6 +821,10 @@ application code eventually leaks; this pushes it into the schema and the connec
 2. **A role that cannot bypass it.** Migrations run as `dm_migrator` (table owner).
    The application connects as `dm_app`: `NOSUPERUSER`, `NOBYPASSRLS`, not the owner of
    any table, with `SELECT/INSERT/UPDATE/DELETE` and nothing else. No `GRANT` to `PUBLIC`.
+   The first migration runs `REVOKE CREATE ON SCHEMA public FROM PUBLIC` and
+   `REVOKE CREATE ON SCHEMA public FROM dm_app` (and from `dm_worker`): no application
+   role can create any object, so no application role can plant an object that shadows
+   one a privileged function resolves (§6.4.1).
 3. **Composite foreign keys carrying `tenant_id`.** Every parent table has
    `UNIQUE (tenant_id, id)` and every child references it as
    `FOREIGN KEY (tenant_id, <parent>_id) REFERENCES <parent> (tenant_id, id)`.
@@ -714,6 +839,11 @@ the design depends on, and §13.3 tests it on every table.
 
 ### 6.2 Tables
 
+All application tables and functions live in schema **`app`**, owned by `dm_migrator`.
+`dm_app` and `dm_worker` have `USAGE` on `app` and no `CREATE` on `app` or `public`. Every
+`search_path` set for application roles is `app, pg_catalog` — but privileged code never
+relies on it (§6.4.1).
+
 Non-tenant-scoped tables, exhaustively — any table not on this list MUST be tenant-scoped
 and RLS-forced, and §13.3 fails the build otherwise:
 
@@ -721,6 +851,9 @@ and RLS-forced, and §13.3 fails the build otherwise:
 - `plans` — product catalogue, world-readable to `dm_app`, writable only by `dm_migrator`.
 - `pgboss.*` — the queue's own schema, owned by `dm_migrator`, accessed only by the worker
   role `dm_worker`. Job payloads carry `tenantId` but contain no customer data beyond ids.
+- `stripe_events(event_id TEXT PRIMARY KEY, type, received_at, processed_at NULL)` —
+  webhook idempotency. Written before a tenant is known, holds Stripe's event id and type
+  only. The primary key **is** the idempotency control (§7.7).
 
 Tenant-scoped tables:
 
@@ -827,19 +960,63 @@ connection), and passes a handle into `fn`. The handle is invalidated when `fn` 
 - There is **no exported pool, client, or `db` object.** Not as a convention — the module
   does not export one, and the boundary test (§2.3) fails the build if anything outside
   `packages/db` imports `pg` or `drizzle-orm`.
-- The only other exported entry point is `withSystem()`, used by migrations, the Stripe
-  webhook handler (which must look up a tenant *by Stripe customer id* before a tenant
-  context exists) and the retention sweep. It connects as `dm_app` **with no tenant GUC**,
-  so RLS still returns zero rows for tenant-scoped tables; it is granted explicit
-  `SECURITY DEFINER` functions for the few lookups it legitimately needs
-  (`resolve_tenant_by_stripe_customer`, `claim_expired_snapshots`). Those functions are
-  individually reviewed and are the complete list of RLS-privileged code paths.
+- The only other exported entry point is `withSystem()`, used by the Stripe webhook
+  handler (which must look up a tenant *by Stripe customer id* before a tenant context
+  exists) and the retention sweep. (Migrations do not go through `packages/db`'s runtime
+  API at all; they run as `dm_migrator` from the migration CLI.) `withSystem()` connects
+  as `dm_app` **with no tenant GUC**, so RLS still returns zero rows for tenant-scoped
+  tables; the only cross-tenant capability it has is `EXECUTE` on the two
+  `SECURITY DEFINER` functions in §6.4.1, which are the **complete** list of
+  RLS-privileged code paths.
 - Connection pooling: `pg.Pool` with explicit transactions. If PgBouncer is introduced
   later it MUST be in transaction-pooling mode or session state breaks — noted in
   `[ADR-0004]` as a constraint on future infrastructure.
 
 Why `set_config` and not a per-tenant role or schema-per-tenant: `[ADR-0004]` compares
 schema-per-tenant and database-per-tenant and records the cost of each.
+
+#### 6.4.1 The `SECURITY DEFINER` inventory and its rules (threat model F-02)
+
+These functions are the only code in the product that reads across tenants, and one of
+them is reachable from an unauthenticated internet endpoint. A definer function without a
+pinned `search_path` resolves unqualified names — including operators and casts — through
+the **caller's** path, which is a full RLS bypass. So the rules are normative and tested.
+
+**Inventory — exactly two, and the build fails on a third (§13.3):**
+
+| Function | Signature | Returns | Called by |
+|---|---|---|---|
+| `app.resolve_tenant_by_stripe_customer` | `(p_customer text)` | `uuid` — the tenant id or `NULL`. Never a row, never any other column. | Stripe webhook, **after** signature verification (§7.7) |
+| `app.claim_expired_snapshots` | `()` — **no caller-supplied argument** | `TABLE(tenant_id uuid, snapshot_id uuid)`, at most 500 rows | `retention.sweep`, which then deletes each snapshot under `withTenant(tenant_id)` so the deletion itself is RLS-mediated |
+
+**Definer role.** Because every table has `FORCE ROW LEVEL SECURITY`, a function owned by
+the table owner would *still* see zero rows. Both functions are therefore owned by a
+dedicated role **`dm_definer`**: `NOLOGIN`, `BYPASSRLS`, owns nothing else, and holds
+**column-level** `SELECT` on exactly what the two bodies read —
+`app.tenants (id, stripe_customer_id, deleted_at)` and
+`app.snapshots (id, tenant_id, repository_id, created_at)` plus
+`app.repositories (id, tenant_id, current_snapshot_id)`. No `INSERT`, `UPDATE` or
+`DELETE` anywhere. `BYPASSRLS` is confined to a role nobody can log in as, whose reach
+is two read-only queries.
+
+**Every such function MUST:**
+
+1. Be declared `SECURITY DEFINER SET search_path = pg_catalog, pg_temp` — `pg_temp`
+   listed **last** explicitly, because when it is omitted PostgreSQL searches it
+   **first**. (The threat model's `pg_catalog` alone leaves the implicit temp schema in
+   front; this is the stricter form of the same control.)
+2. Schema-qualify **every** object reference in its body: `app.tenants`, `pg_catalog.now()`,
+   and operators where a user type is involved (`OPERATOR(pg_catalog.=)`).
+3. Be written in `LANGUAGE sql` (or `plpgsql` with no dynamic SQL — `EXECUTE` of a built
+   string is banned in definer bodies).
+4. Be followed in the same migration by
+   `REVOKE ALL ON FUNCTION … FROM PUBLIC; GRANT EXECUTE ON FUNCTION … TO dm_app;` —
+   PostgreSQL grants `EXECUTE` to `PUBLIC` on every new function by default.
+5. Live in the `app` schema, on which no application role has `CREATE`.
+
+Any migration that adds, alters or drops a `SECURITY DEFINER` function requires
+QA & Security review in addition to mine (threat model F-02 residual risk). The
+inventory is the CTO's to sign: **I sign it at exactly these two**.
 
 ---
 
@@ -959,6 +1136,34 @@ analysis. `from`/`to` MUST be validated against `file_manifest.line_count` and `
 MUST exist in the manifest for that snapshot — this is the control that stops the endpoint
 from becoming an arbitrary-file-read proxy into the customer's repository.
 
+#### 7.6.1 Source caching (threat model F-03)
+
+Every other read path in this product is mediated by RLS. A source cache in process memory
+is not, and its security reduces entirely to its key — so the key is specified here, not
+chosen by whoever writes the function.
+
+**Launch rule: no cross-request source cache.** Fetched source lives in a **per-request
+memo** (a `Map` created inside the request handler and dropped with it), so several
+citations into the same file in one explanation cost one GitHub call. Each request
+resolves the snapshot through `withTenant` (RLS), then makes its **own authorised GitHub
+fetch** with an installation token for that tenant's installation — so a tenant who has
+lost repository access loses it immediately, not 15 minutes later. The cost is a few
+hundred milliseconds per source view, which is acceptable; a cross-tenant leak of raw
+configuration is not.
+
+**If** the Backend spike or production latency later shows a cross-request tier is needed,
+it MAY be added only under all of these, and only with QA & Security review:
+
+1. Key `(tenantId, snapshotId, path, blobSha)` — never `(path, blobSha)` (skips GitHub's
+   permission check and reveals that another tenant holds identical content) and never
+   `(snapshotId, path)` (a cross-tenant read for anyone who learns a snapshot id).
+2. On **every hit**, re-assert `entry.tenantId === ctx.tenantId` before returning
+   (complete mediation — check every access, not just insertion).
+3. TTL ≤ 15 minutes, bounded by entry count **and** total bytes (memory-exhaustion
+   vector otherwise), and purged for a tenant on installation revocation.
+4. Process memory only — never Redis, disk or any shared store, which would be a new
+   data store needing its own ADR and retention statement.
+
 ### 7.7 Billing
 
 ```
@@ -970,6 +1175,20 @@ DELETE /api/v1/settings/api-key/:provider
 POST /api/webhooks/stripe               signature-verified, idempotent by event id
 POST /api/webhooks/github               signature-verified (installation events)
 ```
+
+**Stripe webhook verification**, normative (threat model F-02 — this handler is the
+unauthenticated route that reaches `app.resolve_tenant_by_stripe_customer`):
+
+1. Read the **raw body** with `await req.text()` before any JSON parsing. Anything that
+   re-serialises the body breaks the HMAC.
+2. Verify with the Stripe SDK's `webhooks.constructEvent` (constant-time comparison) and
+   its default **300-second timestamp tolerance**, which stops replay. Failure → `400`,
+   nothing else runs, nothing is logged beyond the failure count.
+3. `INSERT INTO app.stripe_events (event_id, type) … ON CONFLICT DO NOTHING RETURNING` —
+   if no row comes back, this event was already handled: return `200` and stop. The
+   primary key makes this safe under concurrent duplicate deliveries; a check-then-insert
+   would not be.
+4. Only then call the definer function, and only with `event.data.object.customer`.
 
 Stripe Checkout and the Billing Portal are hosted by Stripe: no card data touches our
 servers and PCI scope is minimised. Entitlements are read from **our** `subscriptions`
@@ -1099,9 +1318,9 @@ displayed value; false negatives cost a leaked credential. The asymmetry is deli
   sent to the browser). Reaching `monthly_token_cap` returns `AI_CAP_REACHED` with the
   reset date; the rest of the product keeps working.
 - Free tenants MUST have a key in `tenant_api_keys`, AES-256-GCM encrypted with a random
-  per-row IV and `tenant_id` as additional authenticated data, under
-  `DATA_ENCRYPTION_KEY` with a `key_version` for rotation. Decrypted only in the request
-  that uses it. Never logged, never returned by any endpoint (the UI shows only
+  per-row IV and `tenant_id` as additional authenticated data, under the current
+  data-encryption key with its `key_version` recorded (rotation: §9.2.1). Decrypted only
+  in the request that uses it. Never logged, never returned by any endpoint (the UI shows only
   `last_used_at` and a masked suffix).
 - Model choice, prompt caching and `max_tokens` are the AI Engineer's levers, bounded by
   this contract. The provider seam is `[ADR-0006]`.
@@ -1125,11 +1344,61 @@ displayed value; false negatives cost a leaked credential. The asymmetry is deli
 
 `packages/config` parses the environment through a zod schema **once at process start** and
 the process exits if anything is missing or malformed. No `process.env` access anywhere
-else (enforced by the boundary test). Required: `DATABASE_URL`, `DATA_ENCRYPTION_KEY`,
+else (enforced by the boundary test). Required: `DATABASE_URL`, `DATA_ENCRYPTION_KEYS`, `DATA_ENCRYPTION_KEY_CURRENT`,
 `AUTH_SECRET`, `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_WEBHOOK_SECRET`,
 `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `ANTHROPIC_API_KEY`, `SCAN_SCRATCH_ROOT`.
 No secret is ever committed; `.env.example` holds names only. A pre-commit secret scan and
 a CI secret scan both run (§13.6).
+
+Secrets are delivered to containers as **Docker Compose secrets** (files under
+`/run/secrets`, mode `0400`, owned by the service UID), and `packages/config` reads
+`<NAME>_FILE` in preference to `<NAME>`. Plain environment variables are readable through
+`/proc/<pid>/environ` and leak into crash reports; files are not. Zero cost, and it is
+what `[ADR-0009]`'s single host allows without adding a paid secret manager.
+
+#### 9.2.1 Key rotation and blast radius (threat model F-15)
+
+**What the data-encryption key protects:** only `tenant_api_keys` — free-tier customers'
+own Anthropic keys. GitHub installation tokens are never persisted (§5.1), and nothing
+else is application-encrypted. That bounds the blast radius of a key compromise: every
+stored customer AI key, and nothing else.
+
+**Single key — accepted at launch, with the alternative named.** Per-tenant data keys
+wrapped by one master key do **not** reduce the blast radius, because the master key sits
+in the same place; only an external KMS (AWS KMS, GCP KMS) does, at about US$1/month per
+key plus per-call charges and a second cloud account. That is a recurring cost and a new
+infrastructure component, so it needs an ADR and the CEO's approval; I am **not**
+proposing it before the first paying customer. Trigger to revisit: first paid tenant, or
+more than 100 stored customer keys.
+
+**Rotation procedure** (the `key_version` column is a capability only with this runbook):
+
+1. Configuration holds a keyring, `DATA_ENCRYPTION_KEYS` = `{ "<version>": <32-byte key> }`,
+   plus `DATA_ENCRYPTION_KEY_CURRENT = <version>`. Decrypt uses the row's `key_version`;
+   encrypt always uses current. (Replaces the single `DATA_ENCRYPTION_KEY`.)
+2. **Add** v(n+1) to the keyring and deploy. **Switch** current to v(n+1) and deploy —
+   new writes are v(n+1); old rows still decrypt.
+3. **Re-wrap**: the `crypto.rewrap` job decrypts and re-encrypts every row with
+   `key_version < current`, per tenant under `withTenant`, in batches of 100, preserving
+   the AAD binding to `tenant_id`. It is idempotent and resumable.
+4. **Retire**: when `SELECT count(*) WHERE key_version < current` is zero (checked per
+   tenant through the same job), remove the old key from the keyring and deploy.
+5. Emergency rotation (suspected compromise): steps 2–4 immediately, then email affected
+   free-tier customers to rotate their Anthropic keys at source — re-wrapping protects
+   future reads, not keys an attacker already decrypted.
+
+Rehearsed once in staging before launch, with the runbook in `docs/runbooks/` updated from
+the rehearsal. Test in §13.6.
+
+**GitHub App private key** (the highest-value secret, asset A2 in the threat model):
+GitHub allows several active private keys per App. Rotation = generate a new key in the
+App settings, deploy it as the Compose secret, confirm a token mint succeeds, **delete the
+old key in GitHub**. No dual-read logic is needed because the key signs short-lived JWTs
+and nothing is encrypted under it. Annual rotation, and immediately on suspicion.
+
+**Comparisons.** Every secret comparison (webhook signatures, any token lookup) uses
+`crypto.timingSafeEqual` or the vendor SDK's verifier; `===` on a secret is a review
+rejection.
 
 ### 9.3 Logging and observability
 
@@ -1169,10 +1438,11 @@ Hard failures — no snapshot published, previous snapshot stays current:
 | `SCAN_TIMEOUT` | "Analysis took longer than 10 minutes and was stopped." + support ref |
 | `GRAPH_INVARIANT_VIOLATION` | "We found an inconsistency in our own analysis and stopped rather than show you a diagram we cannot verify." + support ref. **Pages the on-call.** |
 | `PLAN_JSON_INVALID` / `PLAN_JSON_MISMATCH` | Specific to the upload; the scan still succeeds without enrichment |
+| `ARCHIVE_ENTRY_REJECTED` / `ARCHIVE_PATH_ESCAPE` / `ARCHIVE_PATH_COLLISION` | "The repository archive contains an entry we do not accept (`path`, reason: link, device, duplicate path or a path outside the repository). We analyse regular files only." (§5.1.1) |
 | `INTERNAL_ERROR` | Generic message + support ref. Never a stack trace, never an internal id beyond the support ref. |
 
 Soft diagnostics that are shown but never fail a scan: `FILE_PARSE_ERROR`,
-`MODULE_SOURCE_UNSUPPORTED`, `MODULE_PATH_NOT_FOUND`, `LOCALS_CYCLE`,
+`MODULE_SOURCE_UNSUPPORTED`, `MODULE_PATH_NOT_FOUND`, `MODULE_PATH_ESCAPES_REPO`, `LOCALS_CYCLE`,
 `UNRESOLVED_REFERENCE`, `FILE_TOO_LARGE`, `BINARY_SKIPPED`, `POSITION_INDEX_FALLBACK`,
 `NODE_ATTRIBUTES_TRUNCATED`, `SENSITIVE_VALUE_REDACTED`.
 
@@ -1368,6 +1638,27 @@ both in CI and in the pipeline (§5.8), so the same rule protects tests and prod
 - **Role test:** assert `dm_app` is `NOSUPERUSER`, `NOBYPASSRLS`, and owns no table.
 - **Composite-FK test:** attempt to insert a `graph_edges` row whose `from_node_id`
   belongs to another tenant; assert a foreign-key violation (not merely zero rows).
+- **Definer inventory test (F-02):** query `pg_proc` for `prosecdef = true` in every
+  non-system schema and assert the set is **exactly**
+  `{app.resolve_tenant_by_stripe_customer, app.claim_expired_snapshots}` — a third fails
+  the build, which is how a new privileged path gets noticed. For each: `proconfig`
+  contains `search_path=pg_catalog, pg_temp`; owner is `dm_definer`; `proacl` grants
+  `EXECUTE` to `dm_app` and **not** to `PUBLIC`.
+- **Definer role test:** `dm_definer` is `NOLOGIN`, owns no table, and holds no
+  `INSERT`/`UPDATE`/`DELETE` privilege anywhere.
+- **Schema `CREATE` test:** `has_schema_privilege('dm_app', s, 'CREATE')` is false for
+  `public` and `app` (and likewise for `dm_worker`); as `dm_app`, `CREATE TABLE` and
+  `CREATE FUNCTION` in each schema raise.
+- **Shadowing probe:** as a test-only role *with* `CREATE` on a scratch schema placed
+  first on its `search_path`, create a shadowing `tenants` table and `=` operator, call
+  both definer functions, and assert the results are unaffected.
+- **Source-cache isolation (F-03):** tenant A requests a file; tenant B requests the same
+  `(snapshotId, path)`; assert `404` for B, and — by instrumenting the GitHub client —
+  that every source request performed its own authorised fetch. A second test asserts no
+  module-level `Map`/LRU in `apps/web` holds source text (a boundary-test rule).
+- **Webhook idempotency:** deliver the same signed Stripe event twice concurrently;
+  assert one `stripe_events` row and one side effect. Deliver a correctly signed event
+  with a timestamp 301 seconds old; assert `400`.
 
 ### 13.4 Accuracy against an independent oracle
 
@@ -1395,6 +1686,26 @@ a first reading of.
   and the unresolved ratio; fail on >10% drift. Pinned commits only, licences checked
   before a repository joins the list.
 
+- **Module-path escape (F-01a):** fixture repositories whose module `source` values
+  attempt each escape variant — upward traversal past the repository root, absolute path,
+  `file://` URI, NUL byte, backslash. Each run plants a **canary** file containing a unique
+  token in a sibling directory of the scan root and in the worker's working directory.
+  Assert `MODULE_PATH_ESCAPES_REPO`, `moduleResolution: "rejected"`, no node or manifest
+  row sourced outside the scan, and that the canary token appears **nowhere** in the
+  graph, manifest or diagnostics. The canary is the real oracle; the diagnostic alone could
+  pass while another variant still read the file.
+- **Hostile-archive corpus (F-05):** committed gzip tarballs, each a single attack —
+  `..` traversal, absolute path, symlink, hardlink to an outside path, character device,
+  FIFO, duplicate path, NFC/NFD and case-only collisions, GNU long-name entry resolving
+  outside the root, a ratio bomb (compressed well under 50 MB, expanding past 250 MB), and
+  20,001 empty entries. Each asserts its specific diagnostic **and** that no file exists
+  outside the scan root afterwards (a pre/post listing of the tmpfs parent). The bomb
+  asserts the abort happened mid-entry with peak tmpfs usage under 260 MB.
+- **Kill test (F-11):** start a scan on a large fixture, `SIGKILL` the worker mid-parse,
+  restart it, and assert the scan directory is gone before the worker takes its first job
+  and that the boot sweep logged a non-zero count. A second test starts the worker with
+  `SCAN_SCRATCH_ROOT` on a non-tmpfs path and asserts a non-zero exit.
+
 ### 13.6 Supporting gates
 
 - **Explanation grounding** (AI Engineer, AIS-6): unit tests for `validateCitations`
@@ -1407,6 +1718,11 @@ a first reading of.
   owner/name, no tenant or user identifiers, no plan-JSON-derived values. This turns §8.4
   from a promise into an assertion.
 - **Licence gate and secret scan:** §11.
+- **Key rotation (F-15):** encrypt under v1, switch current to v2, assert v1 rows still
+  decrypt and new writes carry `key_version = 2`; run `crypto.rewrap`, assert zero v1 rows;
+  remove v1 from the keyring and assert every row still decrypts. Move a ciphertext from
+  tenant A's row into tenant B's row and assert GCM authentication **fails** — proof the
+  AAD binding is real, not decorative.
 - **Canvas tests** (Frontend): rendered node count equals the API node count; selecting a
   node opens the panel with the matching address; citation click selects the right node;
   keyboard-only traversal of the §9.5 non-visual path. No pixel snapshots of the canvas —
@@ -1428,16 +1744,17 @@ is the CEO's to set. Review and rework by the CTO runs in parallel and is includ
 | Scaffolding, CI, licence gate, boundary test (AIS-8) | 2 |
 | `packages/graph`: schemas, canonicalisation, `validateGraph`, error enum | 3 |
 | Acquire + discover + manifest, with limits and scratch destruction | 2 |
+| Threat-model controls folded in at v0.3: extraction writer + hostile-archive corpus (F-05), tmpfs check + sweeps + kill test (F-11), module-escape canary fixtures (F-01a) | 2 |
 | hcl2json integration + **position index** (the risk) | 5 |
 | Evaluator / constant folding with provenance | 4 |
 | Graph builder + reference extraction + module tree | 5 |
 | Golden corpus (24 cases) + line-reference verification + invariant tests | 4 |
 | Plan JSON enrichment + mismatch guard + recall metric | 3 |
-| DB schema, roles, RLS, migrations, isolation test suite | 4 |
+| DB schema, roles, RLS, migrations, isolation test suite, `dm_definer` + definer inventory/ACL/shadowing tests (F-02) | 5 |
 | pg-boss ingestion job, diagnostics, retention sweep | 3 |
 | Read API (§7.2–7.4, 7.6, 7.8) + contract tests | 3 |
 | Review and rework buffer | 4 |
-| **Total** | **42 (36–50)** |
+| **Total** | **45 (39–53)** |
 
 Position indexing and reference extraction are the two line items that can double. Both
 are the subject of the Backend spike (AIS-4), which is why this estimate is explicitly
@@ -1503,6 +1820,22 @@ parallel and are expected to change it; each open question names who closes it.
 | 9 | Hosting target and monthly cost within GBP 60 | CEO, on `[ADR-0009]` | §12, §15 |
 | 10 | Plan limits: repositories, nodes, monthly token caps | Product AIS-2 | §7.9, §8.6 |
 
+### 16.1 Threat-model findings: disposition
+
+Every specification-level finding from `docs/THREAT-MODEL.md` §5 that was routed to this
+document, with where it is addressed and where the spec **differs** from the proposed
+control. A difference is stated with its reasoning so QA & Security can assess the
+alternative; none is a silent omission.
+
+| Finding | Disposition | Where | Differs from the threat model's control |
+|---|---|---|---|
+| F-01a module path escape | **Accepted** | §5.2, §5.4, §5.1.2 item 5, §13.5 | (1) Containment is enforced by construction — stage 4 resolves lexically against an in-memory map that only contains archive files — with `realpath` checks in Discover and extraction, where the filesystem is touched. Stronger than a `realpath` check in stage 4, which would require the pure stage to do I/O. (2) Per-scan **mount namespace / per-scan tmpfs mount: rejected** — it needs `CAP_SYS_ADMIN` in the worker container, which contradicts F-05's least-privilege control. Replaced by one scan per worker process and a per-container tmpfs, which removes the sibling target the attack needs. |
+| F-02 `SECURITY DEFINER` | **Accepted, tightened** | §6.1, §6.2, §6.4.1, §7.7, §13.3 | `search_path = pg_catalog, pg_temp` rather than `pg_catalog` alone — omitting `pg_temp` leaves the temp schema searched first. Adds a dedicated `NOLOGIN BYPASSRLS dm_definer` with column-level `SELECT` only, because under `FORCE ROW LEVEL SECURITY` an owner-defined function would otherwise return nothing. Inventory signed by CTO at exactly two. |
+| F-03 source cache | **Accepted — the secure default** | §4.9, §5.10, §7.6.1, §13.3 | None. No cross-request cache at launch; conditions written for any future one. |
+| F-05 archive extraction | **Accepted, one mechanism change** | §5.1.1, §13.5 | Uses node-tar's maintained **parser** but not its **extractor**: the extractor has no hook between path resolution and `open()`, so the required write-time assertion cannot be added to it. GNU `L`/`K` entries are validated on their final resolved path rather than rejected by header type, which is the string the differential concern applies to. |
+| F-11 scratch cleanup | **Accepted** | §5.1.2, §5.9, §5.10, §13.5 | None. tmpfs mandatory with a startup exit; boot and periodic sweeps; `SIGTERM` handler. |
+| F-15 key rotation (architecture question) | **Accepted; single-key blast radius accepted at launch with a stated trigger** | §8.6, §9.2, §9.2.1, §13.6 | External KMS not adopted before the first paying customer — a recurring cost and new component needing an ADR and CEO approval. Per-tenant data keys rejected as not reducing blast radius while the master key lives in the same place. |
+
 Revision protocol: each spike's findings arrive as a comment on AIS-3; I update the
 affected section, bump the version in the header, and add a row to the revision log below.
 `parserVersion` and `schemaVersion` are bumped when a change alters parser output or the
@@ -1514,3 +1847,4 @@ wire format, which forces fixtures to be regenerated with a reviewed diff.
 |---|---|---|
 | 0.1 | 2026-10-11 | First complete specification. Pre-spike baseline. |
 | 0.2 | 2026-10-12 | ADRs 0009 (hosting and the £60 envelope), 0010 (data access) and 0011 (monorepo and tooling) written, so every `[ADR-NNNN]` reference in this document now resolves. §3 licence position rewritten around QA & Security's rulings: MPL-2.0 and EPL-2.0 cleared **unmodified only**, closing open question 6 and the licence half of open question 4; §11 `licences` gate tightened to match; §15 MPL risk row closed and replaced by the vendor-patch condition. No change to §4, §5, §6, §7 or §8 — the graph model, pipeline, schema, API and AI flow are untouched. |
+| 0.3 | 2026-10-13 | Threat model (`docs/THREAT-MODEL.md`, AIS-7) specification-level findings folded in, under AIS-11. **F-01a**: §5.4 module containment rule — lexical resolution against Discover's in-memory file set, reject-not-clamp, new `MODULE_PATH_ESCAPES_REPO` and `moduleResolution: "rejected"`; §5.2 Discover is the only filesystem reader and asserts `realpath` containment; §2.3 parser forbidden any filesystem access. **F-02**: §6.4.1 definer inventory (exactly two), `dm_definer` role, `search_path = pg_catalog, pg_temp`, schema-qualified bodies, `EXECUTE` revoked from `PUBLIC`, `CREATE` revoked on `public`/`app`; §6.2 `app` schema and `stripe_events`; §7.7 webhook verification. **F-03**: §7.6.1 no cross-request source cache at launch; conditions if one is ever added. **F-05**: §5.1.1 extraction rules — node-tar `Parser` with our own write-time-checked writer, entry-type allowlist, hardlinks/devices/FIFOs rejected, collision and mid-entry byte limits, non-root read-only worker. **F-11**: §5.1.2 mandatory tmpfs with startup check, boot and periodic sweeps, `SIGTERM` handler, one scan per worker. **F-15**: §9.2.1 keyring rotation runbook, blast-radius statement, GitHub App key rotation, Compose secrets. §13.3/§13.5/§13.6 tests for each. M1 estimate 42 → 45 days. `schemaVersion` stays 1: nothing is implemented yet. |
