@@ -7,7 +7,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { parseUnit } from './build.mjs';
+import { parseUnit, isTerraformFile } from './build.mjs';
 
 const SKIP_DIRS = new Set(['.git', '.terraform', 'node_modules', '.github', 'vendor']);
 
@@ -20,7 +20,7 @@ export function findUnits(root) {
     } catch {
       return;
     }
-    if (entries.some((e) => e.isFile() && e.name.endsWith('.tf'))) units.push(dir);
+    if (entries.some((e) => e.isFile() && isTerraformFile(e.name))) units.push(dir);
     for (const e of entries) {
       if (e.isDirectory() && !SKIP_DIRS.has(e.name)) walk(path.join(dir, e.name));
     }

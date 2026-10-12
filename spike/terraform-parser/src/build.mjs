@@ -23,7 +23,7 @@ const LITERAL_INT = /^[0-9]+$/;
 export async function parseUnit(dir, repoRoot) {
   const files = fs
     .readdirSync(dir)
-    .filter((f) => f.endsWith('.tf'))
+    .filter(isTerraformFile)
     .sort();
 
   const nodes = new Map();
@@ -43,6 +43,23 @@ export async function parseUnit(dir, repoRoot) {
       source = fs.readFileSync(abs, 'utf8');
     } catch (e) {
       diagnostics.push({ file: rel, line: null, severity: 'error', message: `unreadable: ${e.message}` });
+      continue;
+    }
+    if (f.endsWith('.tf.json')) {
+      // Terraform's JSON syntax is already the shape hcl2json produces, so it
+      // skips the HCL parser. It carries no positions; lines are recovered by
+      // searching for the block's quoted name and are approximate.
+      let json;
+      try {
+        json = JSON.parse(source);
+      } catch (e) {
+        diagnostics.push({ file: rel, line: null, severity: 'error', message: `JSON parse failed: ${e.message}` });
+        continue;
+      }
+      const lines = source.split('\n');
+      const blocks = jsonBlocks(json, lines);
+      annotateOccurrences(blocks);
+      parsed.push({ rel, lines, blocks, json });
       continue;
     }
     const { blocks, lines } = indexFile(source);
@@ -188,6 +205,21 @@ export async function parseUnit(dir, repoRoot) {
     }
   }
 
+  const callerAliases = new Set();
+  for (const { json } of parsed) {
+    for (const tb of asArray(json.terraform)) {
+      for (const rp of asArray(tb?.required_providers)) {
+        for (const spec of Object.values(rp ?? {})) {
+          const ca = spec && typeof spec === 'object' ? spec.configuration_aliases : undefined;
+          if (ca === undefined) continue;
+          for (const m of JSON.stringify(ca).matchAll(/([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)/g)) {
+            callerAliases.add(`provider.${m[1]}.${m[2]}`);
+          }
+        }
+      }
+    }
+  }
+
   // ---- Pass 2: resolve references into edges or unresolved records. -------
   for (const pf of parsed) {
     const { rel, lines, blocks, json } = pf;
@@ -250,8 +282,26 @@ export async function parseUnit(dir, repoRoot) {
         const parts = inner.trim().split('.');
         const pid = parts.length > 1 ? `provider.${parts[0]}.${parts[1]}` : `provider.${parts[0]}`;
         const line = findAttributeLine(lines, b.line, b.endLine, 'provider');
+        if (!nodes.has(pid) && parts.length === 1) {
+          // `provider = google-beta` with no provider block is legal: Terraform
+          // uses the default (empty or caller-inherited) configuration. The
+          // provider is real, its configuration is just not in this unit.
+          nodes.set(pid, { id: pid, kind: 'provider', name: parts[0], alias: null, implicit: true, file: rel, line, endLine: line });
+        }
         if (nodes.has(pid)) {
           edges.push({ from: fromId, to: pid, kind: 'provider', attribute: 'provider', file: rel, line });
+        } else if (callerAliases.has(pid)) {
+          // Declared in required_providers.configuration_aliases: the caller
+          // passes it in via `providers = {}`. Resolvable one level up, not here.
+          unresolved.push({
+            from: fromId,
+            reference: inner.trim(),
+            expectedId: pid,
+            reason: 'provider-alias-supplied-by-caller',
+            file: rel,
+            line,
+            attribute: 'provider',
+          });
         } else {
           unresolved.push({
             from: fromId,
@@ -402,6 +452,34 @@ function pick(json, keys, occurrence = 0) {
   }
   const arr = asArray(cur);
   return arr.length > occurrence ? arr[occurrence] : (arr[0] ?? null);
+}
+
+export function isTerraformFile(f) {
+  return f.endsWith('.tf') || f.endsWith('.tf.json');
+}
+
+/** Synthesise the block index for a .tf.json file from its parsed content. */
+function jsonBlocks(json, lines) {
+  const blocks = [];
+  const at = (needle) => findTextLine(lines, 1, lines.length, `"${needle}"`);
+  const add = (kind, labels) => {
+    const line = at(labels[labels.length - 1] ?? kind);
+    blocks.push({ kind, labels, line, endLine: lines.length, approximateLine: true });
+  };
+  for (const kind of ['resource', 'data']) {
+    for (const [type, byName] of Object.entries(json[kind] ?? {})) {
+      for (const [name, bodies] of Object.entries(byName ?? {})) {
+        for (let i = 0; i < asArray(bodies).length; i++) add(kind, [type, name]);
+      }
+    }
+  }
+  for (const kind of ['module', 'variable', 'output', 'provider']) {
+    for (const [name, bodies] of Object.entries(json[kind] ?? {})) {
+      for (let i = 0; i < asArray(bodies).length; i++) add(kind, [name]);
+    }
+  }
+  for (let i = 0; i < asArray(json.locals).length; i++) add('locals', []);
+  return blocks.sort((a, b) => a.line - b.line);
 }
 
 /**

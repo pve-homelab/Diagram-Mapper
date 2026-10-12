@@ -25,12 +25,15 @@
       "output.private_subnet_ids -> local.subnet_ids reference outputs.tf:6",
       "output.vpc_id -> aws_vpc.main reference outputs.tf:2",
       "provider.aws -> var.region reference main.tf:12",
-      "provider.aws.replica -> var.replica_region reference main.tf:17"
+      "provider.aws.replica -> var.replica_region reference main.tf:17",
+      "random_id.suffix -> provider.random provider extra.tf:3",
+      "output.codes -> local.region_codes reference extra.tf:7"
     ],
     "modules/net": [
       "aws_route_table.this -> var.vpc_id reference modules/net/main.tf:10",
       "output.first_subnet_id -> var.subnet_ids reference modules/net/outputs.tf:2",
-      "output.route_table_id -> aws_route_table.this reference modules/net/outputs.tf:6"
+      "output.route_table_id -> aws_route_table.this reference modules/net/outputs.tf:6",
+      "aws_vpc_peering_connection_accepter.peer -> var.vpc_id reference modules/net/versions.tf:12"
     ]
   },
   "unresolved": {
@@ -43,7 +46,9 @@
       "aws_subnet.private count-not-statically-known main.tf:55",
       "data.terraform_remote_state.network remote-state-outside-repository main.tf:22"
     ],
-    "modules/net": []
+    "modules/net": [
+      "aws_vpc_peering_connection_accepter.peer provider-alias-supplied-by-caller modules/net/versions.tf:11"
+    ]
   },
   "crossModuleEdges": [
     "module.net -> modules/net module_source main.tf:107",
