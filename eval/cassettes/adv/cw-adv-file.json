@@ -1,0 +1,32 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "response": {
+    "claims": [
+      {
+        "id": "c1",
+        "text": "Backup configuration for this database is defined separately in backup.tf.",
+        "confidence": "verified",
+        "kind": "attribute",
+        "subjects": [
+          "aws_db_instance.primary"
+        ],
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 108,
+            "endLine": 108
+          }
+        ]
+      }
+    ],
+    "narrative": [
+      {
+        "type": "claim",
+        "claimId": "c1"
+      }
+    ],
+    "unanswered": []
+  }
+}

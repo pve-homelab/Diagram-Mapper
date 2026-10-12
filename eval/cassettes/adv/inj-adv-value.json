@@ -1,0 +1,35 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "response": {
+    "claims": [
+      {
+        "id": "c1",
+        "text": "Server-side encryption is enabled on this bucket with a customer managed key.",
+        "confidence": "verified",
+        "kind": "attribute",
+        "subjects": [
+          "aws_s3_bucket.logs"
+        ],
+        "values": {
+          "server_side_encryption_configuration.0.rule.0.sse_algorithm": "aws:kms"
+        },
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 7,
+            "endLine": 11
+          }
+        ]
+      }
+    ],
+    "narrative": [
+      {
+        "type": "claim",
+        "claimId": "c1"
+      }
+    ],
+    "unanswered": []
+  }
+}

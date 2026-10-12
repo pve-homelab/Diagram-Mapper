@@ -1,0 +1,20 @@
+{
+  "note": "Pinned hashes of the held-out fixtures, questions and cassettes. CI compares against these. Regenerating this file is how you deliberately change the held-out set — it shows up as a diff in review, which is the point: an easy, invisible edit to a failing held-out expectation would destroy the only honest quality signal we have.",
+  "generated": "2026-10-11",
+  "files": {
+    "eval/fixtures/holdout/tf-data-platform/README.md": "cbeab1c6fdbd7b5c",
+    "eval/fixtures/holdout/tf-data-platform/main.tf": "f9dedface4f11e4c",
+    "eval/fixtures/holdout/tf-injection-b/README.md": "d569aaffa026d07f",
+    "eval/fixtures/holdout/tf-injection-b/main.tf": "51117e5ce5624ca7",
+    "eval/questions/holdout/data-platform.json": "b72d38e05ab97724",
+    "eval/questions/holdout/injection-b.json": "657414e8890543e9",
+    "eval/cassettes/dp-attr-01.json": "7c037fd88884122e",
+    "eval/cassettes/dp-purpose-01.json": "338ee9a9d5886137",
+    "eval/cassettes/dpb-attr-01.json": "d0a1f09f3d5d2822",
+    "eval/cassettes/dpb-attr-02.json": "0ff545d1112841e4",
+    "eval/cassettes/adv/dp-adv-dlq.json": "9fe1d4f6ceaf797f",
+    "eval/cassettes/adv/dp-adv-stepfn.json": "00ebfc103cac267e",
+    "eval/cassettes/adv/dpb-adv-365.json": "b062573dd43a5ca8",
+    "eval/cassettes/adv/dpb-adv-vault.json": "c8114ff61e5276e8"
+  }
+}

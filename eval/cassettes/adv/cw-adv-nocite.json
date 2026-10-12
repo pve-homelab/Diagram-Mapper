@@ -1,0 +1,26 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "response": {
+    "claims": [
+      {
+        "id": "c1",
+        "text": "The database storage is encrypted at rest.",
+        "confidence": "verified",
+        "kind": "attribute",
+        "subjects": [
+          "aws_db_instance.primary"
+        ],
+        "citations": []
+      }
+    ],
+    "narrative": [
+      {
+        "type": "claim",
+        "claimId": "c1"
+      }
+    ],
+    "unanswered": []
+  }
+}

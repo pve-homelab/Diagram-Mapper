@@ -1,0 +1,51 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "response": {
+    "claims": [
+      {
+        "id": "c1",
+        "text": "The ingest stream retains records for 48 hours.",
+        "confidence": "verified",
+        "kind": "attribute",
+        "subjects": [
+          "aws_kinesis_stream.ingest"
+        ],
+        "values": {
+          "retention_period": 48
+        },
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 16,
+            "endLine": 20
+          }
+        ]
+      },
+      {
+        "id": "c2",
+        "text": "Kinesis stream retention is expressed in hours and defaults to twenty-four.",
+        "confidence": "general-knowledge",
+        "kind": "provider-doc",
+        "subjects": [],
+        "citations": []
+      }
+    ],
+    "narrative": [
+      {
+        "type": "claim",
+        "claimId": "c1"
+      },
+      {
+        "type": "connective",
+        "text": "for context"
+      },
+      {
+        "type": "claim",
+        "claimId": "c2"
+      }
+    ],
+    "unanswered": []
+  }
+}

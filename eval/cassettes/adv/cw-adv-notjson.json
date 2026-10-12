@@ -1,0 +1,6 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "text": "The bastion security group allows SSH from anywhere, which is a significant exposure. I would recommend restricting it to your office IP range."
+}

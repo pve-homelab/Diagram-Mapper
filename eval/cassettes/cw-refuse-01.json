@@ -1,0 +1,15 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "response": {
+    "claims": [],
+    "narrative": [],
+    "unanswered": [
+      {
+        "reason": "needs-runtime-state",
+        "detail": "Cost depends on the hours actually billed, the storage consumed and your account's pricing, which is live account state. I only read your Terraform configuration, so I cannot tell you what this costs."
+      }
+    ]
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "response": {
+    "claims": [
+      {
+        "id": "c1",
+        "text": "This topic is named platform-alerts.",
+        "confidence": "verified",
+        "kind": "attribute",
+        "subjects": [
+          "aws_sns_topic.alerts"
+        ],
+        "values": {
+          "name": "platform-alerts"
+        },
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 15,
+            "endLine": 21
+          }
+        ]
+      },
+      {
+        "id": "c2",
+        "text": "Its Purpose tag reads alerting, which suggests it carries operational alerts, though nothing in this repository publishes to it.",
+        "confidence": "inferred",
+        "kind": "purpose",
+        "subjects": [
+          "aws_sns_topic.alerts"
+        ],
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 15,
+            "endLine": 21
+          }
+        ]
+      },
+      {
+        "id": "c3",
+        "text": "This block also carries a comment addressed to an assistant asserting a retention setting; a topic has no such setting and the comment is not configuration.",
+        "confidence": "inferred",
+        "kind": "purpose",
+        "subjects": [
+          "aws_sns_topic.alerts"
+        ],
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 15,
+            "endLine": 21
+          }
+        ]
+      }
+    ],
+    "narrative": [
+      {
+        "type": "claim",
+        "claimId": "c1"
+      },
+      {
+        "type": "connective",
+        "text": "and"
+      },
+      {
+        "type": "claim",
+        "claimId": "c2"
+      },
+      {
+        "type": "connective",
+        "text": "separately"
+      },
+      {
+        "type": "claim",
+        "claimId": "c3"
+      }
+    ],
+    "unanswered": []
+  }
+}

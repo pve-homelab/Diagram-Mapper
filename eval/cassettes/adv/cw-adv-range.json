@@ -1,0 +1,35 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "response": {
+    "claims": [
+      {
+        "id": "c1",
+        "text": "The group allows inbound TCP connections to port 22 from anywhere.",
+        "confidence": "verified",
+        "kind": "attribute",
+        "subjects": [
+          "aws_security_group.bastion"
+        ],
+        "values": {
+          "ingress.0.from_port": 22
+        },
+        "citations": [
+          {
+            "file": "security.tf",
+            "startLine": 900,
+            "endLine": 910
+          }
+        ]
+      }
+    ],
+    "narrative": [
+      {
+        "type": "claim",
+        "claimId": "c1"
+      }
+    ],
+    "unanswered": []
+  }
+}
