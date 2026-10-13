@@ -5,6 +5,8 @@ export default defineConfig({
   test: {
     projects: [
       "packages/*",
+      // explain runs under node:test (its own `test` script), not vitest.
+      "!packages/explain",
       "apps/*",
       { test: { name: "scripts", include: ["scripts/**/*.test.ts"] } },
     ],

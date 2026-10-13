@@ -5,7 +5,8 @@
   "type": "module",
   "description": "Grounded explanation engine: retrieval, prompt contract, grounding gate, cost control.",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./contract": "./src/contract.ts"
   },
   "scripts": {
     "test": "node --test \"test/*.test.ts\"",

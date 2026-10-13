@@ -51,3 +51,23 @@ export function loadEnv(): Env {
   cached ??= parseEnv(process.env);
   return cached;
 }
+
+/**
+ * True only under `next dev`. Written as a literal `process.env.NODE_ENV` read so the bundler
+ * inlines it at build time: a production build cannot be switched into dev behaviour (for
+ * example the relaxed dev CSP) by setting a variable on the running server.
+ */
+export function isDevelopment(): boolean {
+  return process.env.NODE_ENV === "development";
+}
+
+/**
+ * Test-only fixture routes (threat model F-06 rendering oracle). Off unless the e2e harness
+ * sets DM_E2E_FIXTURES=1; previews and production never set it. Read at request time, not
+ * through `loadEnv`, because the e2e server runs without the production secret set.
+ */
+export function e2eFixturesEnabled(
+  source: Record<string, string | undefined> = process.env,
+): boolean {
+  return source.DM_E2E_FIXTURES === "1";
+}

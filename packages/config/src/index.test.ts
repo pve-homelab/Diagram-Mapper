@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ConfigError, databaseUrl, parseEnv } from "./index.ts";
+import { ConfigError, databaseUrl, e2eFixturesEnabled, parseEnv } from "./index.ts";
 
 const valid = {
   DATABASE_URL: "postgres://u:p@localhost:5432/db",
@@ -35,5 +35,14 @@ describe("parseEnv", () => {
   it("databaseUrl validates only what migrations need", () => {
     expect(databaseUrl({ DATABASE_URL: valid.DATABASE_URL })).toBe(valid.DATABASE_URL);
     expect(() => databaseUrl({})).toThrow(ConfigError);
+  });
+});
+
+describe("e2eFixturesEnabled", () => {
+  it("is on only for the exact value 1", () => {
+    expect(e2eFixturesEnabled({ DM_E2E_FIXTURES: "1" })).toBe(true);
+    expect(e2eFixturesEnabled({})).toBe(false);
+    expect(e2eFixturesEnabled({ DM_E2E_FIXTURES: "true" })).toBe(false);
+    expect(e2eFixturesEnabled({ DM_E2E_FIXTURES: "0" })).toBe(false);
   });
 });
