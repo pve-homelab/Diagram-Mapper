@@ -1,0 +1,140 @@
+/*
+ * Colour values are provisional until the design-token package lands (packages/ui); they
+ * are declared once here as custom properties so the swap is mechanical. Every
+ * foreground/background pair below meets WCAG 2.2 AA (4.5:1 for text), light and dark.
+ */
+.root {
+  --dm-fg: #1b1f24;
+  --dm-fg-muted: #4b5563;
+  --dm-link: #0b57d0;
+  --dm-verified-fg: #0f5132;
+  --dm-verified-bg: #d1f0de;
+  --dm-inferred-fg: #6b3d00;
+  --dm-inferred-bg: #fde7c4;
+  --dm-general-fg: #2f3a4a;
+  --dm-general-bg: #e3e8ef;
+  --dm-notice-fg: #5c1a1a;
+  --dm-notice-bg: #fdeaea;
+  --dm-notice-border: #b42318;
+  --dm-focus: #0b57d0;
+
+  color: var(--dm-fg);
+  font:
+    0.9375rem / 1.6 system-ui,
+    sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  .root {
+    --dm-fg: #e6e8eb;
+    --dm-fg-muted: #b3b9c2;
+    --dm-link: #8ab4f8;
+    --dm-verified-fg: #b7f0cd;
+    --dm-verified-bg: #123d27;
+    --dm-inferred-fg: #ffd9a3;
+    --dm-inferred-bg: #4a2d06;
+    --dm-general-fg: #d5dce6;
+    --dm-general-bg: #2b3442;
+    --dm-notice-fg: #ffd4d4;
+    --dm-notice-bg: #3d1414;
+    --dm-notice-border: #f97066;
+    --dm-focus: #8ab4f8;
+  }
+}
+
+.narrative {
+  margin: 0 0 0.75rem;
+}
+
+.claim {
+  /* Claims may contain long resource addresses; never let them overflow the panel. */
+  overflow-wrap: anywhere;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5;
+  vertical-align: 0.0625rem;
+}
+
+.glyph {
+  font-weight: 700;
+}
+
+.verified .badge {
+  color: var(--dm-verified-fg);
+  background: var(--dm-verified-bg);
+}
+
+.inferred .badge {
+  color: var(--dm-inferred-fg);
+  background: var(--dm-inferred-bg);
+  /* Second non-colour cue: dashed outline reads as "less certain". */
+  outline: 1px dashed currentColor;
+}
+
+.general .badge {
+  color: var(--dm-general-fg);
+  background: var(--dm-general-bg);
+}
+
+.citations {
+  white-space: nowrap;
+}
+
+.citation,
+.citationInert {
+  margin-inline-end: 0.375rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+}
+
+.citation {
+  color: var(--dm-link);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.citation:focus-visible {
+  outline: 2px solid var(--dm-focus);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.citationInert {
+  color: var(--dm-fg-muted);
+}
+
+.provenance {
+  margin: 0 0 0.5rem;
+  color: var(--dm-fg-muted);
+  font-size: 0.8125rem;
+}
+
+.unanswered {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+}
+
+.notice {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-inline-start: 4px solid var(--dm-notice-border);
+  border-radius: 0.25rem;
+  color: var(--dm-notice-fg);
+  background: var(--dm-notice-bg);
+}
+
+.notice p {
+  margin: 0;
+}
+
+.noticeTitle {
+  font-weight: 600;
+}
