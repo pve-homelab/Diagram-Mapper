@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@diagram-mapper/config": "workspace:*",
+    "@diagram-mapper/explain": "workspace:*",
     "@diagram-mapper/graph": "workspace:*",
     "next": "catalog:",
     "react": "catalog:",

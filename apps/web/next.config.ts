@@ -51,7 +51,7 @@ class ClientPackagesPlugin {
 
 const config: NextConfig = {
   // Workspace packages are consumed as TypeScript source.
-  transpilePackages: ["@diagram-mapper/graph"],
+  transpilePackages: ["@diagram-mapper/config", "@diagram-mapper/explain", "@diagram-mapper/graph"],
   poweredByHeader: false,
   webpack(webpackConfig: { context: string; plugins: unknown[] }, { isServer, dev }) {
     if (!isServer && !dev) {
