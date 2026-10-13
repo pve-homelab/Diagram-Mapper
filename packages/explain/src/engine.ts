@@ -27,6 +27,7 @@ import { buildPrompt } from "./prompt.ts";
 import type { ExplanationProvider } from "./provider.ts";
 import { costUsd, gbp, reservation } from "./cost.ts";
 import { snippetDigest, validateExplanation } from "./validate.ts";
+import { missingExposure } from "./exposure.ts";
 import type { GroundingReport } from "./validate.ts";
 
 export const MAX_OUTPUT_TOKENS = 1500;
@@ -208,6 +209,36 @@ export async function explain(
   const rejected = flags.some((f) => f.severity === "error");
   explanation.flags = flags;
   explanation.claims = rejected ? [] : grounding.claims;
+  // The omission backstop. Only on an answer we are going to show: a rejected
+  // answer is replaced by a refusal, and a refusal does not get decorated.
+  if (!rejected) {
+    const backfill = missingExposure(g, src, ctx, explanation.claims);
+    if (backfill.claims.length > 0) {
+      // Nothing is exempt from the gate, including what the engine adds.
+      const check = validateExplanation(
+        { ...explanation, claims: backfill.claims, narrative: [], unanswered: [] },
+        g,
+        ctx,
+        src,
+      );
+      const added = check.status === "rejected" ? [] : check.claims;
+      explanation.claims = [...explanation.claims, ...added];
+      explanation.narrative = [
+        ...explanation.narrative,
+        ...added.map((c) => ({ type: "claim" as const, claimId: c.id })),
+      ];
+      if (added.length > 0) {
+        flags.push({
+          code: "OMISSION_BACKFILLED",
+          severity: "warn",
+          message: `the answer did not mention ${added.length} exposure fact(s) it was shown; added from the graph (${backfill.facts
+            .map((f) => `${f.rule} on ${f.address}`)
+            .join(", ")})`,
+        });
+      }
+    }
+  }
+
   if (rejected) {
     explanation.answerPath = "refused";
     explanation.narrative = [];

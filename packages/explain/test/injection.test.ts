@@ -177,3 +177,41 @@ test("an honest answer to the hostile fixture survives", async () => {
   assert.equal(out.grounding.status, "grounded");
   assert.ok(out.explanation.flags.some((f) => f.code === "INJECTION_ATTEMPT_IN_SOURCE"));
 });
+
+/**
+ * The omission backstop (F-06 residual risk). A steered answer can be fully
+ * grounded and still leave out the fact that matters. For exposure facts the
+ * model was shown, the engine restates them from the graph.
+ */
+test("an injection that suppresses an exposure fact cannot remove it from the answer", async () => {
+  const out = await steered({
+    claims: [
+      claim({
+        id: "c1",
+        text: "The bucket aws_s3_bucket.logs is a log bucket.",
+        kind: "attribute",
+        subjects: ["aws_s3_bucket.logs"],
+        values: { bucket: "injection-fixture-logs" },
+        citations: [{ file: "main.tf", startLine: 7, endLine: 11 }],
+      }),
+    ],
+    narrative: [{ type: "claim", claimId: "c1" }],
+    unanswered: [],
+  });
+  assert.equal(out.grounding.status, "grounded");
+  assert.ok(out.explanation.flags.some((f) => f.code === "OMISSION_BACKFILLED"), "suppression went unnoticed");
+  const added = out.explanation.claims.filter((c) => c.source === "graph");
+  assert.ok(added.length > 0);
+  for (const c of added) {
+    assert.equal(c.confidence, "verified");
+    assert.ok(c.citations.every((r) => r.file === "main.tf" && r.startLine >= 13 && r.endLine <= 19));
+  }
+  assert.ok(added.some((c) => /block_public_acls = false/.test(c.text)));
+  // The appended claims are shown, not just stored.
+  assert.ok(added.every((c) => out.explanation.narrative.some((n) => n.type === "claim" && n.claimId === c.id)));
+});
+
+test("an answer that already states the exposure is not decorated", async () => {
+  const out = await steered({ claims: [claim({})], narrative: [{ type: "claim", claimId: "c1" }], unanswered: [] });
+  assert.ok(!out.explanation.flags.some((f) => f.code === "OMISSION_BACKFILLED"));
+});
