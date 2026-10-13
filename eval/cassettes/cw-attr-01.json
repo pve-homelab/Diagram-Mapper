@@ -1,0 +1,82 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "response": {
+    "claims": [
+      {
+        "id": "c1",
+        "text": "This security group allows inbound TCP connections to port 22 from 0.0.0.0/0.",
+        "confidence": "verified",
+        "kind": "attribute",
+        "subjects": [
+          "aws_security_group.bastion"
+        ],
+        "values": {
+          "ingress.0.from_port": 22,
+          "ingress.0.cidr_blocks": "0.0.0.0/0"
+        },
+        "citations": [
+          {
+            "file": "security.tf",
+            "startLine": 58,
+            "endLine": 63
+          }
+        ]
+      },
+      {
+        "id": "c2",
+        "text": "aws_instance.bastion attaches this security group through its vpc_security_group_ids argument.",
+        "confidence": "verified",
+        "kind": "relationship",
+        "subjects": [
+          "aws_instance.bastion",
+          "aws_security_group.bastion"
+        ],
+        "edge": {
+          "from": "aws_instance.bastion",
+          "to": "aws_security_group.bastion",
+          "via": "vpc_security_group_ids"
+        },
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 91,
+            "endLine": 91
+          }
+        ]
+      },
+      {
+        "id": "c3",
+        "text": "A rule listing the 0.0.0.0/0 range accepts connections from every address on the public internet.",
+        "confidence": "general-knowledge",
+        "kind": "provider-doc",
+        "subjects": [],
+        "citations": []
+      }
+    ],
+    "narrative": [
+      {
+        "type": "claim",
+        "claimId": "c1"
+      },
+      {
+        "type": "connective",
+        "text": "and"
+      },
+      {
+        "type": "claim",
+        "claimId": "c2"
+      },
+      {
+        "type": "connective",
+        "text": "for context"
+      },
+      {
+        "type": "claim",
+        "claimId": "c3"
+      }
+    ],
+    "unanswered": []
+  }
+}

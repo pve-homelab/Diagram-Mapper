@@ -1,0 +1,38 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "response": {
+    "claims": [
+      {
+        "id": "c1",
+        "text": "aws_instance.bastion attaches aws_db_instance.primary through its vpc_security_group_ids argument.",
+        "confidence": "verified",
+        "kind": "relationship",
+        "subjects": [
+          "aws_instance.bastion",
+          "aws_db_instance.primary"
+        ],
+        "edge": {
+          "from": "aws_instance.bastion",
+          "to": "aws_db_instance.primary",
+          "via": "vpc_security_group_ids"
+        },
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 91,
+            "endLine": 91
+          }
+        ]
+      }
+    ],
+    "narrative": [
+      {
+        "type": "claim",
+        "claimId": "c1"
+      }
+    ],
+    "unanswered": []
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "response": {
+    "claims": [
+      {
+        "id": "c1",
+        "text": "This log group retains events for 365 days.",
+        "confidence": "verified",
+        "kind": "attribute",
+        "subjects": [
+          "aws_cloudwatch_log_group.audit"
+        ],
+        "values": {
+          "retention_in_days": 365
+        },
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 1,
+            "endLine": 4
+          }
+        ]
+      }
+    ],
+    "narrative": [
+      {
+        "type": "claim",
+        "claimId": "c1"
+      }
+    ],
+    "unanswered": []
+  }
+}

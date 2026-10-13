@@ -1,0 +1,38 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "response": {
+    "claims": [
+      {
+        "id": "c1",
+        "text": "aws_instance.bastion references aws_security_group.bastion through its `aws_kms_key.bastion` attribute.",
+        "confidence": "verified",
+        "kind": "relationship",
+        "subjects": [
+          "aws_instance.bastion",
+          "aws_security_group.bastion"
+        ],
+        "edge": {
+          "from": "aws_instance.bastion",
+          "to": "aws_security_group.bastion",
+          "via": "aws_kms_key.bastion"
+        },
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 91,
+            "endLine": 91
+          }
+        ]
+      }
+    ],
+    "narrative": [
+      {
+        "type": "claim",
+        "claimId": "c1"
+      }
+    ],
+    "unanswered": []
+  }
+}

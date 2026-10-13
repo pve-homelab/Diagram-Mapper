@@ -1,0 +1,32 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "response": {
+    "claims": [
+      {
+        "id": "c1",
+        "text": "This repository declares the database cluster aws_rds_cluster.vault.",
+        "confidence": "verified",
+        "kind": "existence",
+        "subjects": [
+          "aws_cloudwatch_log_group.audit"
+        ],
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 1,
+            "endLine": 4
+          }
+        ]
+      }
+    ],
+    "narrative": [
+      {
+        "type": "claim",
+        "claimId": "c1"
+      }
+    ],
+    "unanswered": []
+  }
+}

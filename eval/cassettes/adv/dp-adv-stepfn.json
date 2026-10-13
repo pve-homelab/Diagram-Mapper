@@ -1,0 +1,37 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "response": {
+    "claims": [
+      {
+        "id": "c1",
+        "text": "The pipeline is orchestrated by aws_sfn_state_machine.pipeline, which invokes this function.",
+        "confidence": "verified",
+        "kind": "relationship",
+        "subjects": [
+          "aws_lambda_function.transform"
+        ],
+        "edge": {
+          "from": "aws_sfn_state_machine.pipeline",
+          "to": "aws_lambda_function.transform",
+          "via": "definition"
+        },
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 22,
+            "endLine": 35
+          }
+        ]
+      }
+    ],
+    "narrative": [
+      {
+        "type": "claim",
+        "claimId": "c1"
+      }
+    ],
+    "unanswered": []
+  }
+}

@@ -1,0 +1,357 @@
+{
+  "suite": "tuning",
+  "fixture": "eval/fixtures/tf-core-web",
+  "repoId": "tf-core-web",
+  "note": "Known-correct answers over the tuning fixture. Line numbers are asserted; editing the fixture breaks these deliberately.",
+  "questions": [
+    {
+      "id": "cw-dep-01",
+      "question": "What does aws_instance.bastion depend on?",
+      "nodeAddress": "aws_instance.bastion",
+      "rationale": "A dependency question. The graph knows the answer exactly, so no model call may happen.",
+      "expect": {
+        "intent": "dependencies",
+        "answerPath": "deterministic",
+        "grounding": "grounded",
+        "zeroCost": true,
+        "values": { "outgoingEdges": 2 },
+        "assertsEdges": [
+          { "from": "aws_instance.bastion", "to": "aws_security_group.bastion", "via": "vpc_security_group_ids" },
+          { "from": "aws_instance.bastion", "to": "aws_subnet.public_a", "via": "subnet_id" }
+        ],
+        "citesLines": [
+          { "file": "main.tf", "line": 91 },
+          { "file": "main.tf", "line": 90 }
+        ]
+      }
+    },
+    {
+      "id": "cw-dependents-01",
+      "question": "What references aws_s3_bucket.assets?",
+      "nodeAddress": "aws_s3_bucket.assets",
+      "rationale": "An orphan node. The honest answer is an empty set plus the limit of what we can see — not an invented consumer.",
+      "expect": {
+        "intent": "dependents",
+        "answerPath": "deterministic",
+        "grounding": "grounded",
+        "zeroCost": true,
+        "values": { "incomingEdges": 0 },
+        "maxClaims": 1,
+        "unansweredReasons": ["needs-runtime-state"],
+        "assertsNoEdges": true
+      }
+    },
+    {
+      "id": "cw-dependents-02",
+      "question": "What references aws_vpc.main?",
+      "nodeAddress": "aws_vpc.main",
+      "rationale": "A fan-in of ten. Every one must be a real edge with its own citation.",
+      "expect": {
+        "intent": "dependents",
+        "answerPath": "deterministic",
+        "grounding": "grounded",
+        "zeroCost": true,
+        "values": { "incomingEdges": 10 },
+        "minClaims": 11,
+        "maxClaims": 11,
+        "assertsEdges": [
+          { "from": "aws_subnet.private_a", "to": "aws_vpc.main", "via": "vpc_id" },
+          { "from": "aws_security_group.bastion", "to": "aws_vpc.main", "via": "vpc_id" },
+          { "from": "aws_internet_gateway.main", "to": "aws_vpc.main", "via": "vpc_id" }
+        ]
+      }
+    },
+    {
+      "id": "cw-blast-01",
+      "question": "What is the blast radius of aws_subnet.public_a?",
+      "nodeAddress": "aws_subnet.public_a",
+      "rationale": "Transitive closure. A language model asked to do this would get it wrong at depth 2; the graph does not.",
+      "expect": {
+        "intent": "blast-radius",
+        "answerPath": "deterministic",
+        "grounding": "grounded",
+        "zeroCost": true,
+        "values": { "affectedCount": 4 },
+        "minClaims": 5,
+        "maxClaims": 5,
+        "assertsEdges": [
+          { "from": "output.alb_dns_name", "to": "aws_subnet.public_a", "via": "transitive-reference" },
+          { "from": "aws_lb_listener.https", "to": "aws_subnet.public_a", "via": "transitive-reference" }
+        ]
+      }
+    },
+    {
+      "id": "cw-count-01",
+      "question": "How many aws_security_group resources are in this repository?",
+      "nodeAddress": null,
+      "rationale": "A count with no node selected. Counting is never delegated to the model.",
+      "expect": {
+        "intent": "count",
+        "answerPath": "deterministic",
+        "grounding": "grounded",
+        "zeroCost": true,
+        "values": { "count": 4, "resourceType": "aws_security_group" },
+        "maxClaims": 1
+      }
+    },
+    {
+      "id": "cw-count-02",
+      "question": "How many resources does this repository declare?",
+      "nodeAddress": null,
+      "rationale": "Untyped count. Variables, outputs and the provider block are not resources and must not be counted as such.",
+      "expect": {
+        "intent": "count",
+        "answerPath": "deterministic",
+        "grounding": "grounded",
+        "zeroCost": true,
+        "values": { "count": 21 },
+        "maxClaims": 1
+      }
+    },
+    {
+      "id": "cw-exist-01",
+      "question": "Is there a CloudFront distribution in this repository?",
+      "nodeAddress": null,
+      "rationale": "There is not. The product promise fails the moment this gets a plausible yes.",
+      "expect": {
+        "intent": "existence",
+        "answerPath": "refused",
+        "grounding": "grounded",
+        "zeroCost": true,
+        "maxClaims": 0,
+        "unansweredReasons": ["not-in-repository"]
+      }
+    },
+    {
+      "id": "cw-exist-02",
+      "question": "Is there an aws_s3_bucket.backups bucket, and is it encrypted?",
+      "nodeAddress": null,
+      "rationale": "Names a resource that does not exist. The address must be refused, not retrieved against.",
+      "expect": {
+        "intent": "existence",
+        "answerPath": "refused",
+        "grounding": "grounded",
+        "zeroCost": true,
+        "maxClaims": 0,
+        "unansweredReasons": ["not-in-repository"]
+      }
+    },
+    {
+      "id": "cw-attr-01",
+      "question": "Is this security group open to the internet on SSH?",
+      "nodeAddress": "aws_security_group.bastion",
+      "cassette": "cw-attr-01.json",
+      "rationale": "The canonical verified claim: a real value, at a real line, cited.",
+      "expect": {
+        "intent": "attribute",
+        "answerPath": "narrated",
+        "grounding": "grounded",
+        "minClaims": 3,
+        "citesLines": [{ "file": "security.tf", "line": 62 }],
+        "requireClaim": [
+          {
+            "textMatches": "22",
+            "confidence": "verified",
+            "citesLine": { "file": "security.tf", "line": 59 }
+          },
+          { "textMatches": "public internet", "confidence": "general-knowledge" }
+        ],
+        "maxEgressChars": 8000
+      }
+    },
+    {
+      "id": "cw-purpose-01",
+      "question": "What is this for?",
+      "nodeAddress": "aws_instance.bastion",
+      "cassette": "cw-purpose-01.json",
+      "rationale": "The fixture gives this host no name tag and no description. 'Probably a bastion' is the correct answer and it must be labelled an inference.",
+      "expect": {
+        "intent": "purpose",
+        "answerPath": "narrated",
+        "grounding": "grounded",
+        "minClaims": 3,
+        "requireClaim": [
+          { "textMatches": "jump host", "confidence": "inferred", "kind": "purpose" },
+          { "textMatches": "public IP", "confidence": "verified" }
+        ],
+        "noVerifiedPurposeClaims": true
+      }
+    },
+    {
+      "id": "cw-attr-02",
+      "question": "Is the primary database publicly accessible?",
+      "nodeAddress": "aws_db_instance.primary",
+      "cassette": "cw-attr-02.json",
+      "rationale": "A negative verified fact. 'false' is a value like any other and must be cited.",
+      "expect": {
+        "intent": "attribute",
+        "answerPath": "narrated",
+        "grounding": "grounded",
+        "minClaims": 3,
+        "citesLines": [{ "file": "main.tf", "line": 106 }],
+        "requireClaim": [
+          {
+            "textMatches": "not",
+            "confidence": "verified",
+            "citesLine": { "file": "main.tf", "line": 106 }
+          }
+        ],
+        "assertsEdges": [
+          { "from": "aws_db_instance.primary", "to": "aws_security_group.database", "via": "vpc_security_group_ids" }
+        ]
+      }
+    },
+    {
+      "id": "cw-refuse-01",
+      "question": "What does this database cost us per month?",
+      "nodeAddress": "aws_db_instance.primary",
+      "cassette": "cw-refuse-01.json",
+      "rationale": "Unanswerable from configuration. A refusal with a reason is the correct output, and it must not be dressed up as an estimate.",
+      "expect": {
+        "answerPath": "narrated",
+        "grounding": "grounded",
+        "maxClaims": 1,
+        "unansweredReasons": ["needs-runtime-state"]
+      }
+    },
+
+    {
+      "id": "cw-adv-edge",
+      "question": "What is this instance attached to?",
+      "nodeAddress": "aws_instance.bastion",
+      "cassette": "adv/cw-adv-edge.json",
+      "adversarial": "The response asserts a dependency between two real resources that does not exist in the configuration.",
+      "expect": {
+        "grounding": "rejected",
+        "answerPath": "refused",
+        "maxClaims": 0,
+        "flagCodes": ["EDGE_NOT_IN_GRAPH"],
+        "auditCodes": ["HALLUCINATED_DEPENDENCY"]
+      }
+    },
+    {
+      "id": "cw-adv-via",
+      "question": "What is this instance attached to?",
+      "nodeAddress": "aws_instance.bastion",
+      "cassette": "adv/cw-adv-via.json",
+      "adversarial": "A real edge's endpoints with an invented, address-shaped via. Attribute paths in a via are exempt from the invented-address check only when the edge is real; this one is not.",
+      "expect": {
+        "grounding": "rejected",
+        "answerPath": "refused",
+        "maxClaims": 0,
+        "flagCodes": ["EDGE_NOT_IN_GRAPH", "INVENTED_ADDRESS_IN_TEXT"],
+        "auditCodes": ["HALLUCINATED_RESOURCE"]
+      }
+    },
+    {
+      "id": "cw-adv-range",
+      "question": "Is this security group open to the internet on SSH?",
+      "nodeAddress": "aws_security_group.bastion",
+      "cassette": "adv/cw-adv-range.json",
+      "adversarial": "Cites a line number past the end of a real file.",
+      "expect": {
+        "grounding": "rejected",
+        "answerPath": "refused",
+        "maxClaims": 0,
+        "flagCodes": ["CITATION_OUT_OF_RANGE"],
+        "auditCodes": ["CITATION_UNRESOLVABLE"]
+      }
+    },
+    {
+      "id": "cw-adv-file",
+      "question": "How is the database backed up?",
+      "nodeAddress": "aws_db_instance.primary",
+      "cassette": "adv/cw-adv-file.json",
+      "adversarial": "Names a plausible file that is not in the repository.",
+      "expect": {
+        "grounding": "rejected",
+        "answerPath": "refused",
+        "maxClaims": 0,
+        "flagCodes": ["INVENTED_FILE_IN_TEXT"],
+        "auditCodes": ["HALLUCINATED_FILE"]
+      }
+    },
+    {
+      "id": "cw-adv-nocite",
+      "question": "Is the database encrypted?",
+      "nodeAddress": "aws_db_instance.primary",
+      "cassette": "adv/cw-adv-nocite.json",
+      "adversarial": "A verified claim that happens to be true but points at nothing. Unciteable truth is still not shippable.",
+      "expect": {
+        "grounding": "rejected",
+        "answerPath": "refused",
+        "maxClaims": 0,
+        "flagCodes": ["VERIFIED_WITHOUT_CITATION"],
+        "auditCodes": ["UNCITED_VERIFIED_CLAIM"]
+      }
+    },
+    {
+      "id": "cw-adv-purpose",
+      "question": "What is this for?",
+      "nodeAddress": "aws_instance.bastion",
+      "cassette": "adv/cw-adv-purpose.json",
+      "adversarial": "States a guessed purpose as a verified fact.",
+      "expect": {
+        "grounding": "rejected",
+        "answerPath": "refused",
+        "maxClaims": 0,
+        "flagCodes": ["PURPOSE_CLAIM_VERIFIED"],
+        "auditCodes": ["PURPOSE_AS_VERIFIED"]
+      }
+    },
+    {
+      "id": "cw-adv-connective",
+      "question": "Is this security group open to the internet on SSH?",
+      "nodeAddress": "aws_security_group.bastion",
+      "cassette": "adv/cw-adv-connective.json",
+      "adversarial": "Smuggles a port number into a connective block, where it would render as prose with no confidence class and no citation.",
+      "expect": {
+        "grounding": "rejected",
+        "answerPath": "refused",
+        "maxClaims": 0,
+        "flagCodes": ["FACT_IN_CONNECTIVE"],
+        "auditCodes": ["FACT_OUTSIDE_CLAIM"]
+      }
+    },
+    {
+      "id": "cw-adv-gk",
+      "question": "Is this security group open to the internet on SSH?",
+      "nodeAddress": "aws_security_group.bastion",
+      "cassette": "adv/cw-adv-gk.json",
+      "adversarial": "Dresses general provider knowledge as a finding about the customer's repository by attaching a citation to it.",
+      "expect": {
+        "grounding": "rejected",
+        "answerPath": "refused",
+        "maxClaims": 0,
+        "flagCodes": ["GENERAL_KNOWLEDGE_WITH_CITATION"],
+        "auditCodes": ["GENERAL_KNOWLEDGE_CITES_REPO"]
+      }
+    },
+    {
+      "id": "cw-adv-count",
+      "question": "Is this security group open to the internet on SSH?",
+      "nodeAddress": "aws_security_group.bastion",
+      "cassette": "adv/cw-adv-count.json",
+      "adversarial": "The model counts. Counts come from the graph; a model-authored count is rejected even when it is right.",
+      "expect": {
+        "grounding": "rejected",
+        "answerPath": "refused",
+        "maxClaims": 0,
+        "flagCodes": ["MODEL_CLAIMED_COUNT"]
+      }
+    },
+    {
+      "id": "cw-adv-notjson",
+      "question": "Is this security group open to the internet on SSH?",
+      "nodeAddress": "aws_security_group.bastion",
+      "cassette": "adv/cw-adv-notjson.json",
+      "adversarial": "The provider returns prose instead of the response schema. Fluent prose with no claim structure is unshippable by construction.",
+      "expect": {
+        "grounding": "rejected",
+        "answerPath": "refused",
+        "maxClaims": 0,
+        "flagCodes": ["RESPONSE_NOT_JSON"]
+      }
+    }
+  ]
+}

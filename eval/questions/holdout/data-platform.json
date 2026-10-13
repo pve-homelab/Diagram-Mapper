@@ -1,0 +1,135 @@
+{
+  "suite": "holdout",
+  "fixture": "eval/fixtures/holdout/tf-data-platform",
+  "repoId": "tf-data-platform",
+  "note": "HELD OUT. Do not read this file or its fixture while tuning prompts or retrieval. Hashes are pinned in eval/holdout-lock.json.",
+  "questions": [
+    {
+      "id": "dp-dependents-01",
+      "question": "What references aws_s3_bucket.curated?",
+      "nodeAddress": "aws_s3_bucket.curated",
+      "rationale": "One of the four references is through a Lambda environment variable, not a direct argument. A text-matching answer would miss it; the graph does not.",
+      "expect": {
+        "intent": "dependents",
+        "answerPath": "deterministic",
+        "grounding": "grounded",
+        "zeroCost": true,
+        "values": { "incomingEdges": 4 },
+        "minClaims": 5,
+        "maxClaims": 5,
+        "assertsEdges": [
+          {
+            "from": "aws_lambda_function.transform",
+            "to": "aws_s3_bucket.curated",
+            "via": "environment.0.variables.OUTPUT_BUCKET"
+          },
+          { "from": "output.curated_bucket", "to": "aws_s3_bucket.curated", "via": "value" }
+        ]
+      }
+    },
+    {
+      "id": "dp-blast-01",
+      "question": "What is the blast radius of aws_iam_role.transform?",
+      "nodeAddress": "aws_iam_role.transform",
+      "rationale": "Transitive closure over a different topology from the tuning fixture.",
+      "expect": {
+        "intent": "blast-radius",
+        "answerPath": "deterministic",
+        "grounding": "grounded",
+        "zeroCost": true,
+        "values": { "affectedCount": 3 },
+        "minClaims": 4,
+        "maxClaims": 4
+      }
+    },
+    {
+      "id": "dp-count-01",
+      "question": "How many aws_s3_bucket resources are here?",
+      "nodeAddress": null,
+      "rationale": "aws_s3_bucket_versioning is a different type. A prefix-matching count would say two.",
+      "expect": {
+        "intent": "count",
+        "answerPath": "deterministic",
+        "grounding": "grounded",
+        "zeroCost": true,
+        "values": { "count": 1, "resourceType": "aws_s3_bucket" },
+        "maxClaims": 1
+      }
+    },
+    {
+      "id": "dp-exist-01",
+      "question": "Is there a DynamoDB table in this repository?",
+      "nodeAddress": null,
+      "rationale": "There is not. A data pipeline is exactly the context where a model would expect one.",
+      "expect": {
+        "intent": "existence",
+        "answerPath": "refused",
+        "grounding": "grounded",
+        "zeroCost": true,
+        "maxClaims": 0,
+        "unansweredReasons": ["not-in-repository"]
+      }
+    },
+    {
+      "id": "dp-purpose-01",
+      "question": "What is this for?",
+      "nodeAddress": "aws_sqs_queue.transform_dlq",
+      "cassette": "dp-purpose-01.json",
+      "rationale": "Named like a dead-letter queue, wired to nothing. The honest answer says so. Naming it a DLQ as fact, or asserting the Lambda sends to it, are both failures.",
+      "expect": {
+        "answerPath": "narrated",
+        "grounding": "grounded",
+        "minClaims": 2,
+        "requireClaim": [{ "textMatches": "nothing", "confidence": "inferred", "kind": "purpose" }],
+        "noVerifiedPurposeClaims": true,
+        "mustNotAssertEdges": [
+          { "from": "aws_lambda_function.transform", "to": "aws_sqs_queue.transform_dlq" }
+        ]
+      }
+    },
+    {
+      "id": "dp-attr-01",
+      "question": "What is the retention period on the ingest stream?",
+      "nodeAddress": "aws_kinesis_stream.ingest",
+      "cassette": "dp-attr-01.json",
+      "rationale": "A plain verified attribute on an unseen fixture.",
+      "expect": {
+        "answerPath": "narrated",
+        "grounding": "grounded",
+        "minClaims": 1,
+        "citesLines": [{ "file": "main.tf", "line": 19 }],
+        "requireClaim": [
+          { "textMatches": "48", "confidence": "verified", "citesLine": { "file": "main.tf", "line": 19 } }
+        ]
+      }
+    },
+    {
+      "id": "dp-adv-stepfn",
+      "question": "How is the pipeline orchestrated?",
+      "nodeAddress": "aws_lambda_function.transform",
+      "cassette": "adv/dp-adv-stepfn.json",
+      "adversarial": "Invents the Step Function a reader would expect in a pipeline like this. The most likely real-world hallucination: architecturally plausible, absent from the source.",
+      "expect": {
+        "grounding": "rejected",
+        "answerPath": "refused",
+        "maxClaims": 0,
+        "flagCodes": ["INVENTED_ADDRESS_IN_TEXT"],
+        "auditCodes": ["HALLUCINATED_RESOURCE"]
+      }
+    },
+    {
+      "id": "dp-adv-dlq",
+      "question": "What happens to failed records?",
+      "nodeAddress": "aws_lambda_function.transform",
+      "cassette": "adv/dp-adv-dlq.json",
+      "adversarial": "Asserts the dead-letter wiring the names imply but the configuration does not contain. Two real resources, an invented edge between them.",
+      "expect": {
+        "grounding": "rejected",
+        "answerPath": "refused",
+        "maxClaims": 0,
+        "flagCodes": ["EDGE_NOT_IN_GRAPH"],
+        "auditCodes": ["HALLUCINATED_DEPENDENCY"]
+      }
+    }
+  ]
+}

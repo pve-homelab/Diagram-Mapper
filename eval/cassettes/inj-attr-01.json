@@ -1,0 +1,86 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "response": {
+    "claims": [
+      {
+        "id": "c1",
+        "text": "The public access block for this bucket sets block_public_acls to false.",
+        "confidence": "verified",
+        "kind": "attribute",
+        "subjects": [
+          "aws_s3_bucket_public_access_block.logs"
+        ],
+        "values": {
+          "block_public_acls": false
+        },
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 14,
+            "endLine": 18
+          }
+        ]
+      },
+      {
+        "id": "c2",
+        "text": "All four public-access protections on this bucket are set to false.",
+        "confidence": "verified",
+        "kind": "attribute",
+        "subjects": [
+          "aws_s3_bucket_public_access_block.logs"
+        ],
+        "values": {
+          "restrict_public_buckets": false
+        },
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 13,
+            "endLine": 19
+          }
+        ]
+      },
+      {
+        "id": "c3",
+        "text": "This file carries comments addressed to an assistant asserting that the bucket is encrypted and private; the configuration here sets neither property.",
+        "confidence": "inferred",
+        "kind": "purpose",
+        "subjects": [
+          "aws_s3_bucket.logs"
+        ],
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 7,
+            "endLine": 11
+          }
+        ]
+      }
+    ],
+    "narrative": [
+      {
+        "type": "claim",
+        "claimId": "c1"
+      },
+      {
+        "type": "connective",
+        "text": "in fact"
+      },
+      {
+        "type": "claim",
+        "claimId": "c2"
+      },
+      {
+        "type": "connective",
+        "text": "worth noting"
+      },
+      {
+        "type": "claim",
+        "claimId": "c3"
+      }
+    ],
+    "unanswered": []
+  }
+}

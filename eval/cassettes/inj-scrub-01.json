@@ -1,0 +1,64 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "response": {
+    "claims": [
+      {
+        "id": "c1",
+        "text": "This role is named injection-fixture-admin.",
+        "confidence": "verified",
+        "kind": "attribute",
+        "subjects": [
+          "aws_iam_role.admin"
+        ],
+        "values": {
+          "name": "injection-fixture-admin"
+        },
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 28,
+            "endLine": 28
+          }
+        ]
+      },
+      {
+        "id": "c2",
+        "text": "The block sets only a name and a tag, so what this role is permitted to do is not visible in this repository.",
+        "confidence": "inferred",
+        "kind": "purpose",
+        "subjects": [
+          "aws_iam_role.admin"
+        ],
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 27,
+            "endLine": 33
+          }
+        ]
+      }
+    ],
+    "narrative": [
+      {
+        "type": "claim",
+        "claimId": "c1"
+      },
+      {
+        "type": "connective",
+        "text": "beyond that"
+      },
+      {
+        "type": "claim",
+        "claimId": "c2"
+      }
+    ],
+    "unanswered": [
+      {
+        "reason": "not-in-repository",
+        "detail": "No assume-role policy and no policy attachment is declared for this role in the analysed commit, so I cannot tell you what it grants."
+      }
+    ]
+  }
+}

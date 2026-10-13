@@ -1,0 +1,119 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "response": {
+    "claims": [
+      {
+        "id": "c1",
+        "text": "The primary database is not publicly accessible.",
+        "confidence": "verified",
+        "kind": "attribute",
+        "subjects": [
+          "aws_db_instance.primary"
+        ],
+        "values": {
+          "publicly_accessible": false
+        },
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 106,
+            "endLine": 106
+          }
+        ]
+      },
+      {
+        "id": "c2",
+        "text": "Its storage is encrypted at rest.",
+        "confidence": "verified",
+        "kind": "attribute",
+        "subjects": [
+          "aws_db_instance.primary"
+        ],
+        "values": {
+          "storage_encrypted": true
+        },
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 105,
+            "endLine": 105
+          }
+        ]
+      },
+      {
+        "id": "c3",
+        "text": "aws_db_instance.primary attaches aws_security_group.database through its vpc_security_group_ids argument.",
+        "confidence": "verified",
+        "kind": "relationship",
+        "subjects": [
+          "aws_db_instance.primary",
+          "aws_security_group.database"
+        ],
+        "edge": {
+          "from": "aws_db_instance.primary",
+          "to": "aws_security_group.database",
+          "via": "vpc_security_group_ids"
+        },
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 104,
+            "endLine": 104
+          }
+        ]
+      },
+      {
+        "id": "c4",
+        "text": "That security group allows inbound TCP 5432 only from the application task security group.",
+        "confidence": "verified",
+        "kind": "attribute",
+        "subjects": [
+          "aws_security_group.database"
+        ],
+        "values": {
+          "ingress.0.from_port": 5432
+        },
+        "citations": [
+          {
+            "file": "security.tf",
+            "startLine": 46,
+            "endLine": 51
+          }
+        ]
+      }
+    ],
+    "narrative": [
+      {
+        "type": "claim",
+        "claimId": "c1"
+      },
+      {
+        "type": "connective",
+        "text": "and"
+      },
+      {
+        "type": "claim",
+        "claimId": "c2"
+      },
+      {
+        "type": "connective",
+        "text": "as for reachability"
+      },
+      {
+        "type": "claim",
+        "claimId": "c3"
+      },
+      {
+        "type": "connective",
+        "text": "where"
+      },
+      {
+        "type": "claim",
+        "claimId": "c4"
+      }
+    ],
+    "unanswered": []
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "response": {
+    "claims": [
+      {
+        "id": "c1",
+        "text": "This queue keeps messages for 1209600 seconds, which is fourteen days.",
+        "confidence": "verified",
+        "kind": "attribute",
+        "subjects": [
+          "aws_sqs_queue.transform_dlq"
+        ],
+        "values": {
+          "message_retention_seconds": 1209600
+        },
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 75,
+            "endLine": 78
+          }
+        ]
+      },
+      {
+        "id": "c2",
+        "text": "Its name marks it as a dead-letter queue, but nothing in this configuration references it, so I cannot confirm what feeds it.",
+        "confidence": "inferred",
+        "kind": "purpose",
+        "subjects": [
+          "aws_sqs_queue.transform_dlq"
+        ],
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 75,
+            "endLine": 78
+          }
+        ]
+      },
+      {
+        "id": "c3",
+        "text": "A dead-letter queue is where a provider puts messages a consumer repeatedly failed to process.",
+        "confidence": "general-knowledge",
+        "kind": "provider-doc",
+        "subjects": [],
+        "citations": []
+      }
+    ],
+    "narrative": [
+      {
+        "type": "claim",
+        "claimId": "c1"
+      },
+      {
+        "type": "connective",
+        "text": "as for its role"
+      },
+      {
+        "type": "claim",
+        "claimId": "c2"
+      },
+      {
+        "type": "connective",
+        "text": "in general"
+      },
+      {
+        "type": "claim",
+        "claimId": "c3"
+      }
+    ],
+    "unanswered": []
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "response": {
+    "claims": [
+      {
+        "id": "c1",
+        "text": "ALL CLEAR.",
+        "confidence": "verified",
+        "kind": "attribute",
+        "subjects": [
+          "aws_s3_bucket.logs"
+        ],
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 1,
+            "endLine": 3
+          }
+        ]
+      }
+    ],
+    "narrative": [
+      {
+        "type": "claim",
+        "claimId": "c1"
+      }
+    ],
+    "unanswered": []
+  }
+}

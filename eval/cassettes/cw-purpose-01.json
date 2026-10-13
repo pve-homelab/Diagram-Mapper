@@ -1,0 +1,102 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "response": {
+    "claims": [
+      {
+        "id": "c1",
+        "text": "This instance is configured to receive a public IP address.",
+        "confidence": "verified",
+        "kind": "attribute",
+        "subjects": [
+          "aws_instance.bastion"
+        ],
+        "values": {
+          "associate_public_ip_address": true
+        },
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 92,
+            "endLine": 92
+          }
+        ]
+      },
+      {
+        "id": "c2",
+        "text": "Its only inbound rule allows TCP port 22 from 0.0.0.0/0.",
+        "confidence": "verified",
+        "kind": "attribute",
+        "subjects": [
+          "aws_security_group.bastion"
+        ],
+        "values": {
+          "ingress.0.from_port": 22
+        },
+        "citations": [
+          {
+            "file": "security.tf",
+            "startLine": 58,
+            "endLine": 63
+          }
+        ]
+      },
+      {
+        "id": "c3",
+        "text": "This is probably an SSH jump host: it sits in a public subnet, takes a public address, and its only inbound rule is SSH from anywhere.",
+        "confidence": "inferred",
+        "kind": "purpose",
+        "subjects": [
+          "aws_instance.bastion"
+        ],
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 87,
+            "endLine": 93
+          }
+        ]
+      },
+      {
+        "id": "c4",
+        "text": "A host that exists only to accept SSH and reach otherwise private hosts is conventionally called a bastion.",
+        "confidence": "general-knowledge",
+        "kind": "provider-doc",
+        "subjects": [],
+        "citations": []
+      }
+    ],
+    "narrative": [
+      {
+        "type": "claim",
+        "claimId": "c1"
+      },
+      {
+        "type": "connective",
+        "text": "and"
+      },
+      {
+        "type": "claim",
+        "claimId": "c2"
+      },
+      {
+        "type": "connective",
+        "text": "taken together"
+      },
+      {
+        "type": "claim",
+        "claimId": "c3"
+      },
+      {
+        "type": "connective",
+        "text": "by convention"
+      },
+      {
+        "type": "claim",
+        "claimId": "c4"
+      }
+    ],
+    "unanswered": []
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "@diagram-mapper/explain",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Grounded explanation engine: retrieval, prompt contract, grounding gate, cost control.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.ts\"",
+    "eval": "node ../../eval/run.ts",
+    "eval:ci": "node --test \"test/*.test.ts\" && node ../../eval/run.ts --suite=all --provider=recorded",
+    "eval:live": "node ../../eval/run.ts --suite=all --provider=anthropic"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.74.0"
+  }
+}

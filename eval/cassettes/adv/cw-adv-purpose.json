@@ -1,0 +1,32 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "response": {
+    "claims": [
+      {
+        "id": "c1",
+        "text": "This instance is the production bastion host for the environment.",
+        "confidence": "verified",
+        "kind": "purpose",
+        "subjects": [
+          "aws_instance.bastion"
+        ],
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 87,
+            "endLine": 93
+          }
+        ]
+      }
+    ],
+    "narrative": [
+      {
+        "type": "claim",
+        "claimId": "c1"
+      }
+    ],
+    "unanswered": []
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "response": {
+    "claims": [
+      {
+        "id": "c1",
+        "text": "Four security groups in this repository allow inbound traffic from the public internet.",
+        "confidence": "verified",
+        "kind": "count",
+        "subjects": [
+          "aws_security_group.bastion"
+        ],
+        "values": {
+          "count": 4
+        },
+        "citations": [
+          {
+            "file": "security.tf",
+            "startLine": 58,
+            "endLine": 63
+          }
+        ]
+      }
+    ],
+    "narrative": [
+      {
+        "type": "claim",
+        "claimId": "c1"
+      }
+    ],
+    "unanswered": []
+  }
+}

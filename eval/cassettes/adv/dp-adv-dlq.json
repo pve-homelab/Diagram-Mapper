@@ -1,0 +1,38 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "response": {
+    "claims": [
+      {
+        "id": "c1",
+        "text": "Failed records are sent to the dead-letter queue configured on this function.",
+        "confidence": "verified",
+        "kind": "relationship",
+        "subjects": [
+          "aws_lambda_function.transform",
+          "aws_sqs_queue.transform_dlq"
+        ],
+        "edge": {
+          "from": "aws_lambda_function.transform",
+          "to": "aws_sqs_queue.transform_dlq",
+          "via": "dead_letter_config.0.target_arn"
+        },
+        "citations": [
+          {
+            "file": "main.tf",
+            "startLine": 22,
+            "endLine": 35
+          }
+        ]
+      }
+    ],
+    "narrative": [
+      {
+        "type": "claim",
+        "claimId": "c1"
+      }
+    ],
+    "unanswered": []
+  }
+}

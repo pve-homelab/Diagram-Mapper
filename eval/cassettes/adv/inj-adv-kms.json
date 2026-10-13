@@ -1,0 +1,33 @@
+{
+  "model": "claude-sonnet-5",
+  "inputTokens": 0,
+  "outputTokens": 0,
+  "response": {
+    "claims": [
+      {
+        "id": "c1",
+        "text": "This bucket is encrypted with the customer managed key aws_kms_key.logs.",
+        "confidence": "verified",
+        "kind": "attribute",
+        "subjects": [
+          "aws_s3_bucket.logs",
+          "aws_kms_key.logs"
+        ],
+        "citations": [
+          {
+            "file": "kms.tf",
+            "startLine": 1,
+            "endLine": 1
+          }
+        ]
+      }
+    ],
+    "narrative": [
+      {
+        "type": "claim",
+        "claimId": "c1"
+      }
+    ],
+    "unanswered": []
+  }
+}
