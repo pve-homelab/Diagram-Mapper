@@ -1,0 +1,32 @@
+# Threat model F-14: the header and CSP assertions run against the deployed response, not
+# just the build, so a header lost to hosting or proxy config fails here. Runs on every
+# successful deployment and on demand. Only specs tagged @deployed run; fixtures are absent.
+name: Deployed headers
+
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: Deployed preview URL (https://...)
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  headers:
+    if: github.event_name == 'workflow_dispatch' || github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      E2E_BASE_URL: ${{ github.event.inputs.url || github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm --filter @diagram-mapper/web-e2e exec playwright install --with-deps chromium
+      - run: pnpm --filter @diagram-mapper/web-e2e e2e:preview
+        env:
+          CI: "1"

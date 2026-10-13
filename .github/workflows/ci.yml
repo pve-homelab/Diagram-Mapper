@@ -130,3 +130,26 @@ jobs:
           tar -xzf gitleaks.tgz gitleaks
       - name: Scan full history (redacted)
         run: ./gitleaks git --redact --no-banner --config .gitleaks.toml --exit-code 1 .
+
+  e2e:
+    # Security headers and CSP (F-14), the model-output rendering oracle (F-06) and axe
+    # (TEST-STRATEGY section 8), against a production build. A foreign request, a CSP
+    # violation or a console error on the happy path fails the job.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: pnpm --filter @diagram-mapper/web build
+      - run: pnpm --filter @diagram-mapper/web-e2e exec playwright install --with-deps chromium
+      - run: pnpm --filter @diagram-mapper/web-e2e e2e
+        env:
+          CI: "1"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web-e2e/playwright-report
+          if-no-files-found: ignore
